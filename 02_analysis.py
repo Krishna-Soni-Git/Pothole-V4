@@ -42,28 +42,50 @@ INPUT_CSV = "Data/NS_Project_Merged_FIXED.csv"
 
 # ── Colour palette (matches v2 style) ────────────────────────────────────────
 P = {
-    "bg":      "#F7F4EF", "panel":   "#FFFFFF",
-    "text":    "#1A1A2E", "subtext": "#555577",
-    "rain":    "#2E86AB", "ftc":     "#C0392B",
-    "spring":  "#E07B39", "neutral": "#8395A7",
-    "snow":    "#5DADE2", "green":   "#27AE60",
-    "gold":    "#F0C040", "grid":    "#E0DDD8",
+    # chart colours — vivid enough to work on both white and dark backgrounds
+    "bg":      "#F8F9FB",
+    "panel":   "#FFFFFF",
+    "text":    "#111827",
+    "subtext": "#4B5563",
+    "rain":    "#1D70B8",
+    "ftc":     "#C0392B",
+    "spring":  "#B45309",
+    "neutral": "#6B7280",
+    "snow":    "#0284C7",
+    "green":   "#15803D",
+    "gold":    "#D97706",
+    "grid":    "#E5E7EB",
 }
 
 
 def apply_style():
     plt.rcParams.update({
-        "figure.facecolor": P["bg"],    "axes.facecolor":    P["panel"],
-        "axes.edgecolor":   P["grid"],  "axes.labelcolor":   P["text"],
-        "axes.titlecolor":  P["text"],  "axes.titlesize":    13,
-        "axes.titleweight": "bold",     "axes.labelsize":    10,
-        "axes.spines.top":  False,      "axes.spines.right": False,
-        "axes.grid":        True,       "grid.color":        P["grid"],
-        "grid.linewidth":   0.6,        "xtick.color":       P["subtext"],
-        "ytick.color":      P["subtext"],"xtick.labelsize":  9,
-        "ytick.labelsize":  9,          "legend.fontsize":   9,
-        "legend.frameon":   True,       "legend.framealpha": 0.9,
-        "font.family":      "DejaVu Sans", "text.color":     P["text"],
+        "figure.facecolor":  P["bg"],
+        "axes.facecolor":    P["panel"],
+        "axes.edgecolor":    P["grid"],
+        "axes.labelcolor":   P["text"],
+        "axes.titlecolor":   P["text"],
+        "axes.titlesize":    14,
+        "axes.titleweight":  "bold",
+        "axes.labelsize":    11,
+        "axes.spines.top":   False,
+        "axes.spines.right": False,
+        "axes.grid":         True,
+        "grid.color":        P["grid"],
+        "grid.linewidth":    0.6,
+        "xtick.color":       P["subtext"],
+        "ytick.color":       P["subtext"],
+        "xtick.labelsize":   10,
+        "ytick.labelsize":   10,
+        "legend.fontsize":   10,
+        "legend.frameon":    True,
+        "legend.framealpha": 0.92,
+        "font.family":       "DejaVu Sans",
+        "text.color":        P["text"],
+        "figure.dpi":        150,
+        "savefig.dpi":       180,
+        "axes.titlepad":     14,
+        "axes.labelpad":     8,
     })
 
 
