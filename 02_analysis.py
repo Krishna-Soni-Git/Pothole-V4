@@ -7,7 +7,9 @@ Writes: outputs/  (9 figures + 2 CSV tables)
 Analysis pipeline:
   1. Load & quality report
   2. Feature engineering  (freeze-thaw, rolling windows, HDD, lags, interactions)
-  3. Spearman correlations (lag curve + rolling feature ranking)
+  3. Lagged Spearman correlations (lag curve + rolling feature ranking)
+     - Bonferroni-corrected p-values for all 21 lag tests
+     - Effective-N reported alongside raw N to flag autocorrelation
   4. OLS regression        (weekdays, 7 predictors, HC3 robust SE)
   5. Regional analysis     (per-station Spearman for 3 key features)
   6. Nine publication-quality figures:
@@ -34,6 +36,13 @@ import matplotlib.ticker as mticker
 import matplotlib.patches as mpatches
 import seaborn as sns
 from scipy import stats
+try:
+    from statsmodels.stats.stattools import durbin_watson
+    from statsmodels.regression.linear_model import OLS as sm_OLS
+    from statsmodels.tools import add_constant
+    HAS_STATSMODELS = True
+except ImportError:
+    HAS_STATSMODELS = False
 
 warnings.filterwarnings("ignore")
 os.makedirs("outputs", exist_ok=True)
@@ -241,7 +250,8 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
             daily["Precip_x_FTC"].rolling(7, min_periods=1).sum().shift(1)
         )
 
-    print(f"  {len(daily)} days × {len(daily.columns)} features")
+    wd_count = daily["IsWeekday"].sum()
+    print(f"  {len(daily)} days × {len(daily.columns)} features  ({wd_count} weekdays)")
     return daily
 
 
@@ -249,24 +259,109 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 # 3. SPEARMAN CORRELATIONS
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 3. LAGGED SPEARMAN CORRELATIONS
+#    Method: repeated lagged bivariate Spearman correlations (NOT cross-corr)
+#    Corrections applied:
+#      - Weekday filter (consistent with OLS regression)
+#      - Bonferroni correction for multiple testing (21 lag tests)
+#      - Effective sample size (Nₑ) reported to flag autocorrelation impact
+# ══════════════════════════════════════════════════════════════════════════════
+
+def effective_n(x, y):
+    """
+    Estimate effective sample size accounting for autocorrelation in both series.
+    Uses the first-order autocorrelation (AR1) approximation:
+        Ne = N * (1 - r1_x * r1_y) / (1 + r1_x * r1_y)
+    where r1_x, r1_y are lag-1 autocorrelations of each series.
+    Returns effective N (floored at 30).
+    """
+    n = len(x)
+    if n < 10:
+        return n
+    try:
+        r1_x = pd.Series(x).autocorr(lag=1)
+        r1_y = pd.Series(y).autocorr(lag=1)
+        r1_x = r1_x if pd.notna(r1_x) else 0.0
+        r1_y = r1_y if pd.notna(r1_y) else 0.0
+        denom = 1 + r1_x * r1_y
+        if denom <= 0:
+            return n
+        ne = n * (1 - r1_x * r1_y) / denom
+        return max(30, int(ne))
+    except Exception:
+        return n
+
+
 def correlations(daily: pd.DataFrame) -> pd.DataFrame:
-    print("\nSpearman correlations (all lag/rolling features)...")
-    lag_cols = [c for c in daily.columns if
+    """
+    Compute lagged Spearman correlations between rolling weather features
+    and daily pothole counts.
+
+    Key methodological notes:
+    - Weekdays only (consistent with OLS regression — call-centre hours bias)
+    - Bonferroni correction applied: alpha_corrected = 0.05 / n_tests
+    - Effective N (Ne) reported alongside raw N
+    - p-values use effective N to approximate autocorrelation adjustment
+    - Method: repeated lagged bivariate Spearman correlations
+      (NOT formal time-series cross-correlation / CCF)
+    """
+    print("\nLagged Spearman correlations (weekdays only, Bonferroni-corrected)...")
+
+    # ── Use weekdays only — consistent with OLS ───────────────────────────────
+    wd = daily[daily["IsWeekday"] == 1].copy()
+
+    lag_cols = [c for c in wd.columns if
                 any(k in c for k in ["Lag_", "Roll", "HDD", "PrecipxFTC"])]
+
     rows = []
     for col in lag_cols:
-        sub = daily[["Pothole_Count", col]].dropna()
+        sub = wd[["Pothole_Count", col]].dropna()
         if len(sub) < 30:
             continue
-        r, p = stats.spearmanr(sub["Pothole_Count"], sub[col])
-        rows.append({"Feature": col, "r": round(r, 4),
-                     "p": round(p, 4), "N": len(sub)})
+        r, p_raw = stats.spearmanr(sub["Pothole_Count"], sub[col])
 
-    corr_df = (pd.DataFrame(rows)
-               .sort_values("r", ascending=False)
-               .reset_index(drop=True))
-    print("Top 12:")
-    print(corr_df.head(12).to_string(index=False))
+        # Effective N — autocorrelation-adjusted sample size
+        ne = effective_n(sub["Pothole_Count"].values, sub[col].values)
+
+        # Recompute p-value using effective N (approximation)
+        # t = r * sqrt((Ne-2)/(1-r^2)), df = Ne-2
+        if abs(r) < 1.0 and ne > 2:
+            t_stat = r * np.sqrt((ne - 2) / (1 - r**2))
+            p_adj_n = float(2 * (1 - stats.t.cdf(abs(t_stat), df=ne - 2)))
+        else:
+            p_adj_n = p_raw
+
+        rows.append({
+            "Feature":    col,
+            "r":          round(r, 4),
+            "p_raw":      round(p_raw, 4),
+            "p_eff_n":    round(p_adj_n, 4),
+            "N_raw":      len(sub),
+            "N_eff":      ne,
+        })
+
+    if not rows:
+        return pd.DataFrame()
+
+    corr_df = pd.DataFrame(rows).sort_values("r", ascending=False).reset_index(drop=True)
+
+    # ── Bonferroni correction across all tests ────────────────────────────────
+    n_tests = len(corr_df)
+    corr_df["p_bonferroni"] = (corr_df["p_eff_n"] * n_tests).clip(upper=1.0).round(4)
+    corr_df["sig_bonferroni"] = corr_df["p_bonferroni"] < 0.05
+    corr_df["sig_raw"]        = corr_df["p_raw"] < 0.05
+
+    print(f"\n  Total tests: {n_tests}  |  Bonferroni α = {0.05/n_tests:.5f}")
+    print(f"  Significant (raw p<0.05):        "
+          f"{corr_df['sig_raw'].sum()} / {n_tests}")
+    print(f"  Significant (Bonferroni-corrected): "
+          f"{corr_df['sig_bonferroni'].sum()} / {n_tests}")
+    print("\nTop 12 (sorted by |r|):")
+    display = pd.concat([corr_df.nlargest(6, "r"), corr_df.nsmallest(6, "r")],
+                        ignore_index=True)
+    print(display[["Feature","r","p_raw","p_bonferroni","N_raw","N_eff",
+                   "sig_bonferroni"]].to_string(index=False))
     return corr_df
 
 
@@ -274,50 +369,96 @@ def correlations(daily: pd.DataFrame) -> pd.DataFrame:
 # 4. OLS REGRESSION
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 4. OLS REGRESSION
+#    Improvements:
+#    - Newey-West SE (HAC) used when statsmodels available — corrects for
+#      both heteroskedasticity AND serial autocorrelation
+#    - Falls back to HC3 if statsmodels not installed
+#    - Durbin-Watson statistic reported to quantify residual autocorrelation
+#    - Separated R² reported: full model vs weather-only (no Spring dummy)
+#    - Weekdays only (consistent with correlation analysis)
+# ══════════════════════════════════════════════════════════════════════════════
+
 def regression(daily: pd.DataFrame):
     print("\nOLS regression (weekdays only)...")
 
-    # Select predictors — only include if the column exists
     candidate_preds = [
         "Precip_Roll7d", "Rain_Roll7d", "Snow_Roll7d",
         "FTC_Roll14d",   "HDD_Roll14d", "SpringSeason",
         "PrecipxFTC_Roll7d",
     ]
+    # Weather-only predictors (excluding calendar dummy)
+    weather_preds = [p for p in candidate_preds if p != "SpringSeason"]
+
     preds = [p for p in candidate_preds if p in daily.columns]
+    wpreds = [p for p in weather_preds if p in daily.columns]
 
     wd = daily[daily["IsWeekday"] == 1].dropna(subset=preds + ["Pothole_Count"]).copy()
+    n  = len(wd)
 
-    X = np.column_stack([np.ones(len(wd))] + [wd[p].values for p in preds])
-    y = wd["Pothole_Count"].values
+    def fit_ols(X_mat, y_vec):
+        """OLS with HC3 robust SE (manual implementation)."""
+        beta, _, _, _ = np.linalg.lstsq(X_mat, y_vec, rcond=None)
+        yhat   = X_mat @ beta
+        ss_res = np.sum((y_vec - yhat) ** 2)
+        ss_tot = np.sum((y_vec - y_vec.mean()) ** 2)
+        r2     = 1 - ss_res / ss_tot
+        k      = X_mat.shape[1]
+        e      = y_vec - yhat
+        h      = np.diag(X_mat @ np.linalg.inv(X_mat.T @ X_mat) @ X_mat.T)
+        e_hc3  = e / (1 - h)
+        meat   = (X_mat * (e_hc3 ** 2)[:, None]).T @ X_mat
+        bread  = np.linalg.inv(X_mat.T @ X_mat)
+        cov    = bread @ meat @ bread
+        se     = np.sqrt(np.diag(cov))
+        tv     = beta / se
+        pv     = [2 * (1 - stats.t.cdf(abs(t), df=n - k)) for t in tv]
+        dw     = np.sum(np.diff(e)**2) / np.sum(e**2)
+        return beta, se, tv, pv, r2, dw, e
 
-    beta, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
-    yhat   = X @ beta
-    ss_res = np.sum((y - yhat) ** 2)
-    ss_tot = np.sum((y - y.mean()) ** 2)
-    r2     = 1 - ss_res / ss_tot
+    # ── Full model (with Spring dummy) ────────────────────────────────────────
+    X_full = np.column_stack([np.ones(n)] + [wd[p].values for p in preds])
+    y      = wd["Pothole_Count"].values
+    beta_f, se_f, tv_f, pv_f, r2_full, dw, resid = fit_ols(X_full, y)
 
-    # Robust standard errors (HC3 sandwich estimator)
-    n, k = X.shape
-    e    = y - yhat
-    h    = np.diag(X @ np.linalg.inv(X.T @ X) @ X.T)   # hat matrix diagonal
-    e_hc3 = e / (1 - h)                                  # HC3 residuals
-    meat  = (X * (e_hc3 ** 2)[:, None]).T @ X
-    bread = np.linalg.inv(X.T @ X)
-    cov   = bread @ meat @ bread
-    se    = np.sqrt(np.diag(cov))
-    tv    = beta / se
-    pv    = [2 * (1 - stats.t.cdf(abs(t), df=n - k)) for t in tv]
+    # ── Weather-only model (no Spring dummy) ──────────────────────────────────
+    X_wx = np.column_stack([np.ones(n)] + [wd[p].values for p in wpreds])
+    _, _, _, _, r2_wx, _, _ = fit_ols(X_wx, y)
+
+    # ── Newey-West SE if statsmodels available ────────────────────────────────
+    nw_note = "HC3 robust SE (install statsmodels for Newey-West HAC SE)"
+    if HAS_STATSMODELS:
+        try:
+            import statsmodels.api as sm
+            X_sm   = add_constant(wd[preds].values)
+            res_sm = sm_OLS(y, X_sm).fit(cov_type='HAC',
+                                          cov_kwds={'maxlags': 5, 'use_correction': True})
+            se_f   = res_sm.bse
+            tv_f   = res_sm.tvalues
+            pv_f   = res_sm.pvalues
+            nw_note = "Newey-West HAC robust SE (maxlags=5) — corrects for autocorrelation"
+        except Exception as ex:
+            print(f"  Newey-West failed ({ex}), using HC3 instead")
 
     reg_df = pd.DataFrame({
         "Variable":    ["Intercept"] + preds,
-        "Coefficient": np.round(beta, 4),
-        "Std_Error":   np.round(se, 4),
-        "T_Stat":      np.round(tv, 3),
-        "P_Value":     np.round(pv, 4),
+        "Coefficient": np.round(beta_f, 4),
+        "Std_Error":   np.round(se_f,   4),
+        "T_Stat":      np.round(tv_f,   3),
+        "P_Value":     np.round(pv_f,   4),
     })
-    print(f"\n  R² = {r2:.4f}  (N={n:,})")
-    print(reg_df.to_string(index=False))
-    return reg_df, r2
+    reg_df["Significant"] = reg_df["P_Value"] < 0.05
+
+    print(f"\n  SE method : {nw_note}")
+    print(f"  R² (full model incl. Spring dummy) : {r2_full:.4f}  ({r2_full*100:.1f}%)")
+    print(f"  R² (weather variables only)        : {r2_wx:.4f}  ({r2_wx*100:.1f}%)")
+    print(f"  Durbin-Watson statistic            : {dw:.3f}  "
+          f"({'autocorrelation present' if dw < 1.5 else 'mild autocorrelation' if dw < 2.5 else 'negative autocorr'})")
+    print(f"  N (weekdays)                       : {n:,}")
+    print("\n" + reg_df.to_string(index=False))
+
+    return reg_df, r2_full, r2_wx, dw
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -388,43 +529,117 @@ def regional(df: pd.DataFrame) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_lag_curve(daily: pd.DataFrame):
-    """Fig 01 — Spearman r at each 1–21 day lag for precip and FTC."""
-    print("  Fig 01: lag curve")
-    lags  = list(range(1, 22))
-    cp, cf = [], []
+    """
+    Fig 01 — Lagged Spearman r at each 1–21 day lag for precip and FTC.
+
+    Method: repeated lagged bivariate Spearman correlations.
+    Each point = Spearman r between Pothole_Count and the weather variable
+    shifted forward by lag days. This is NOT a formal cross-correlation /
+    CCF analysis — it is a Spearman correlogram.
+
+    Corrections applied:
+    - Weekdays only (call-centre hours bias removed)
+    - Bonferroni-corrected significance threshold shown as reference line
+    - Effective N reported in caption to flag autocorrelation impact
+    """
+    print("  Fig 01: lagged Spearman correlogram (weekdays only)")
+
+    # Weekdays only — consistent with OLS
+    wd   = daily[daily["IsWeekday"] == 1].copy()
+    lags = list(range(1, 22))
+    n_tests = len(lags) * 2            # precip + FTC, 21 lags each = 42 tests
+    alpha_bonf = 0.05 / n_tests        # Bonferroni threshold
+    cp, cf, pp, pf = [], [], [], []
 
     for lag in lags:
-        for arr, out in [("Total_Precip", cp), ("Freeze_Thaw", cf)]:
-            if arr not in daily.columns:
-                out.append(np.nan); continue
-            s = daily[["Pothole_Count", arr]].copy()
+        for arr, out_r, out_p in [
+            ("Total_Precip", cp, pp),
+            ("Freeze_Thaw",  cf, pf),
+        ]:
+            if arr not in wd.columns:
+                out_r.append(np.nan); out_p.append(np.nan); continue
+            s = wd[["Pothole_Count", arr]].copy()
             s["sh"] = s[arr].shift(lag)
             s = s.dropna()
-            r, _ = stats.spearmanr(s["Pothole_Count"], s["sh"])
-            out.append(r)
+            if len(s) < 30:
+                out_r.append(np.nan); out_p.append(np.nan); continue
+            r, p_raw = stats.spearmanr(s["Pothole_Count"], s["sh"])
+            # Effective N for this lag
+            ne = effective_n(s["Pothole_Count"].values, s["sh"].values)
+            # Recompute p using effective N
+            if abs(r) < 1.0 and ne > 2:
+                t_stat = r * np.sqrt((ne - 2) / (1 - r**2))
+                p_use  = float(2 * (1 - stats.t.cdf(abs(t_stat), df=ne - 2)))
+            else:
+                p_use = p_raw
+            out_r.append(r)
+            out_p.append(p_use)
 
-    pp = int(np.nanargmax(cp)); pf = int(np.nanargmax(cf))
+    # Find peak lags
+    cf_clean = [v for v in cf if not np.isnan(v)]
+    cp_clean = [v for v in cp if not np.isnan(v)]
+    pf_idx   = int(np.nanargmin(cf))   # most negative FTC lag
+    pp_idx   = int(np.nanargmax(cp))   # most positive precip lag
 
-    fig, ax = plt.subplots(figsize=(11, 5.5))
-    ax.axhline(0, color=P["grid"], lw=1)
-    ax.fill_between(lags, cp, alpha=.12, color=P["rain"])
+    # Effective N summary for caption
+    s_ref = wd[["Pothole_Count","Freeze_Thaw"]].copy()
+    s_ref["sh"] = s_ref["Freeze_Thaw"].shift(5)
+    s_ref = s_ref.dropna()
+    ne_ref = effective_n(s_ref["Pothole_Count"].values, s_ref["sh"].values)
+
+    # Significance markers on FTC curve
+    sig_lags_f = [lags[i] for i, p in enumerate(pf)
+                  if not np.isnan(p) and p < alpha_bonf]
+
+    fig, ax = plt.subplots(figsize=(12, 5.5))
+    ax.axhline(0, color=P["grid"], lw=1.2)
+
+    # Bonferroni threshold — approximate critical r for reference
+    # Using effective N from lag-5 as representative
+    t_crit = stats.t.ppf(1 - alpha_bonf / 2, df=max(ne_ref - 2, 1))
+    r_crit = t_crit / np.sqrt(ne_ref - 2 + t_crit**2)
+    ax.axhline( r_crit, color=P["gold"], lw=1, ls=":", alpha=0.7,
+               label=f"Bonferroni threshold (α={alpha_bonf:.4f})")
+    ax.axhline(-r_crit, color=P["gold"], lw=1, ls=":", alpha=0.7)
+
+    ax.fill_between(lags, cp, alpha=.10, color=P["rain"])
     ax.fill_between(lags, cf, alpha=.10, color=P["ftc"])
-    ax.plot(lags, cp, "o-",  lw=2.2, ms=5, color=P["rain"], label="Precipitation (single-day lag)")
-    ax.plot(lags, cf, "s--", lw=2.2, ms=5, color=P["ftc"],  label="Freeze-Thaw (single-day lag)")
-    ax.annotate(f"Peak Day {lags[pp]}\nr={cp[pp]:.3f}",
-                xy=(lags[pp], cp[pp]), xytext=(lags[pp]+1.5, cp[pp]+.008),
-                arrowprops=dict(arrowstyle="->", color=P["rain"], lw=1.2),
-                fontsize=8, color=P["rain"])
-    ax.annotate(f"Peak Day {lags[pf]}\nr={cf[pf]:.3f}",
-                xy=(lags[pf], cf[pf]), xytext=(lags[pf]-4, cf[pf]+.012),
-                arrowprops=dict(arrowstyle="->", color=P["ftc"], lw=1.2),
-                fontsize=8, color=P["ftc"])
-    ax.set_title("The Lag Effect: How Many Days After a Weather Event Do Potholes Spike?", pad=14)
-    ax.set_xlabel("Days After Weather Event")
+    ax.plot(lags, cp, "o-",  lw=2.2, ms=5, color=P["rain"],
+            label="Precipitation (lagged Spearman r)")
+    ax.plot(lags, cf, "s--", lw=2.2, ms=5, color=P["ftc"],
+            label="Freeze-Thaw Count (lagged Spearman r)")
+
+    # Mark Bonferroni-significant FTC lags
+    for sl in sig_lags_f:
+        i = sl - 1
+        if not np.isnan(cf[i]):
+            ax.plot(sl, cf[i], "*", ms=9, color=P["ftc"], zorder=5)
+
+    ax.annotate(
+        f"Peak Day {lags[pp_idx]}\nr={cp[pp_idx]:.3f}",
+        xy=(lags[pp_idx], cp[pp_idx]),
+        xytext=(lags[pp_idx]+1.5, cp[pp_idx]+.008),
+        arrowprops=dict(arrowstyle="->", color=P["rain"], lw=1.2),
+        fontsize=8, color=P["rain"])
+    ax.annotate(
+        f"Peak Day {lags[pf_idx]}\nr={cf[pf_idx]:.3f}",
+        xy=(lags[pf_idx], cf[pf_idx]),
+        xytext=(lags[pf_idx]-4.5, cf[pf_idx]+.014),
+        arrowprops=dict(arrowstyle="->", color=P["ftc"], lw=1.2),
+        fontsize=8, color=P["ftc"])
+
+    ax.set_title(
+        "Lagged Spearman Correlations: Freeze-Thaw Events → Pothole Complaints\n"
+        f"★ = Bonferroni-significant (α={alpha_bonf:.4f})  |  "
+        f"Effective N ≈ {ne_ref} (raw N={len(s_ref)}, adjusted for autocorrelation)",
+        pad=14)
+    ax.set_xlabel("Days After Weather Event (positive lag = weather predicts future complaints)")
     ax.set_ylabel("Spearman r")
     ax.set_xticks(lags)
-    ax.legend()
-    caption(fig, "Source: NS TIR + Environment Canada | Spearman correlation 2019-2025 | All days")
+    ax.legend(fontsize=9)
+    caption(fig,
+        "Method: repeated lagged bivariate Spearman correlations (NOT formal CCF/cross-correlation)  "
+        "|  Weekdays only 2019–2025  |  Bonferroni α corrected for 42 tests")
     save(fig, "01_lag_curve.png")
 
 
@@ -522,14 +737,24 @@ def plot_new_variables(daily: pd.DataFrame):
 
 
 def plot_rolling_comparison(daily: pd.DataFrame):
-    """Fig 05 — Horizontal bar chart ranking all rolling features by Spearman r."""
-    print("  Fig 05: rolling comparison")
-    roll_cols = [c for c in daily.columns if "Roll" in c and any(
-        k in c for k in ["Precip_Roll","Rain_Roll","Snow_Roll","FTC_Roll","HDD_Roll","PrecipxFTC"])]
+    """
+    Fig 05 — Lagged Spearman r ranking all rolling features.
+    Weekdays only. Labels corrected to 'lagged Spearman r'.
+    Note: p-values not corrected here — see correlation_table.csv for
+    Bonferroni-corrected values.
+    """
+    print("  Fig 05: rolling comparison (weekdays only)")
+    wd = daily[daily["IsWeekday"] == 1].copy()
+    roll_cols = [c for c in wd.columns if "Roll" in c and any(
+        k in c for k in ["Precip_Roll","Rain_Roll","Snow_Roll","FTC_Roll",
+                          "HDD_Roll","PrecipxFTC"])]
     records = []
     for col in roll_cols:
-        sub  = daily[["Pothole_Count", col]].dropna()
-        r, _ = stats.spearmanr(sub["Pothole_Count"], sub[col])
+        sub  = wd[["Pothole_Count", col]].dropna()
+        if len(sub) < 30:
+            continue
+        r, p = stats.spearmanr(sub["Pothole_Count"], sub[col])
+        ne   = effective_n(sub["Pothole_Count"].values, sub[col].values)
         label = (col.replace("Precip_Roll","Precip ")
                     .replace("Rain_Roll",  "Rain ")
                     .replace("Snow_Roll",  "Snow ")
@@ -537,17 +762,18 @@ def plot_rolling_comparison(daily: pd.DataFrame):
                     .replace("HDD_Roll",   "HDD ")
                     .replace("PrecipxFTC_Roll","Precip×FTC ")
                     .replace("d", "-day"))
-        records.append({"Feature": label, "r": round(r, 4)})
+        records.append({"Feature": label, "r": round(r, 4),
+                        "N_eff": ne, "p": round(p, 4)})
 
     df_r   = pd.DataFrame(records).sort_values("r", ascending=False).head(14)
     colors = []
     for f in df_r["Feature"]:
-        if "Rain" in f:       colors.append(P["rain"])
-        elif "Snow" in f:     colors.append(P["snow"])
-        elif "FTC" in f:      colors.append(P["ftc"])
-        elif "HDD" in f:      colors.append(P["spring"])
+        if "Rain" in f:         colors.append(P["rain"])
+        elif "Snow" in f:       colors.append(P["snow"])
+        elif "FTC" in f:        colors.append(P["ftc"])
+        elif "HDD" in f:        colors.append(P["spring"])
         elif "Precip×FTC" in f: colors.append(P["gold"])
-        else:                 colors.append(P["neutral"])
+        else:                   colors.append(P["neutral"])
 
     fig, ax = plt.subplots(figsize=(11, 6))
     bars = ax.barh(range(len(df_r)), df_r["r"],
@@ -558,7 +784,8 @@ def plot_rolling_comparison(daily: pd.DataFrame):
     ax.axvline(0, color=P["text"], lw=0.8)
     ax.set_yticks(range(len(df_r)))
     ax.set_yticklabels(df_r["Feature"], fontsize=9)
-    ax.set_xlabel("Spearman r"); ax.invert_yaxis()
+    ax.set_xlabel("Lagged Spearman r  (weekdays only)")
+    ax.invert_yaxis()
     ax.legend(handles=[
         mpatches.Patch(color=P["rain"],    label="Precipitation"),
         mpatches.Patch(color=P["snow"],    label="Snowfall"),
@@ -566,9 +793,13 @@ def plot_rolling_comparison(daily: pd.DataFrame):
         mpatches.Patch(color=P["spring"],  label="Heating Degree Days"),
         mpatches.Patch(color=P["gold"],    label="Precip × FTC interaction"),
     ], loc="lower right")
-    ax.set_title("All Rolling Weather Windows vs Daily Pothole Complaints\n"
-                 "Spearman Correlation Ranked (top 14)", pad=14)
-    caption(fig, "Source: NS TIR + Environment Canada | All days 2019-2025")
+    ax.set_title(
+        "Rolling Weather Windows vs Daily Pothole Complaints\n"
+        "Lagged Spearman r Ranked (top 14)  |  Weekdays only", pad=14)
+    caption(fig,
+        "Method: lagged Spearman correlations (NOT CCF)  "
+        "|  Bonferroni-corrected values in correlation_table.csv  "
+        "|  Source: NS TIR + Environment Canada 2019–2025")
     save(fig, "05_rolling_comparison.png")
 
 
@@ -715,8 +946,13 @@ def plot_regional_heatmap(reg_df: pd.DataFrame):
     save(fig, "08_regional_heatmap.png")
 
 
-def plot_ols_coefficients(reg_df: pd.DataFrame, r2: float):
-    """Fig 09 — OLS coefficient plot with 95% CI and significance colour."""
+def plot_ols_coefficients(reg_df: pd.DataFrame, r2_full: float,
+                          r2_wx: float = None, dw: float = None):
+    """
+    Fig 09 — OLS coefficient plot with 95% CI and significance colour.
+    Now shows both full-model R² and weather-only R² separately.
+    SE method (Newey-West or HC3) noted in caption.
+    """
     print("  Fig 09: OLS coefficients")
     df_p = reg_df[reg_df["Variable"] != "Intercept"].copy().reset_index(drop=True)
     df_p["CI_low"]  = df_p["Coefficient"] - 1.96*df_p["Std_Error"]
@@ -729,10 +965,14 @@ def plot_ols_coefficients(reg_df: pd.DataFrame, r2: float):
         "Snow_Roll7d":       "7-day Cumul. Snow",
         "FTC_Roll14d":       "14-day FTC Count",
         "HDD_Roll14d":       "14-day Heating Deg Days",
-        "SpringSeason":      "Spring Season (Mar-May)",
+        "SpringSeason":      "Spring Season dummy (Mar–May)*",
         "PrecipxFTC_Roll7d": "Precip × FTC Interaction",
     }
     df_p["Label"] = df_p["Variable"].map(labels).fillna(df_p["Variable"])
+
+    se_method = "Newey-West HAC SE" if HAS_STATSMODELS else "HC3 Robust SE"
+    r2_wx_str = f"  |  Weather-only R²={r2_wx:.3f} ({r2_wx*100:.1f}%)" if r2_wx else ""
+    dw_str    = f"  |  Durbin-Watson={dw:.2f}" if dw else ""
 
     fig, ax = plt.subplots(figsize=(10, 5.5))
     y_pos  = range(len(df_p))
@@ -753,13 +993,22 @@ def plot_ols_coefficients(reg_df: pd.DataFrame, r2: float):
     ax.set_xlabel("Regression Coefficient (extra complaints per unit increase)")
     ax.set_title(
         f"OLS Regression: Weather Effect on Daily Pothole Complaints\n"
-        f"R² = {r2:.3f}  |  Model explains {r2*100:.1f}% of variance (weekdays only)",
+        f"Full-model R²={r2_full:.3f} ({r2_full*100:.1f}%){r2_wx_str}{dw_str}",
         pad=14)
     ax.legend(handles=[
         mpatches.Patch(color=P["ftc"],     label="Significant (p<0.05)"),
         mpatches.Patch(color=P["neutral"], label="Not significant"),
     ], loc="lower right")
-    caption(fig, "OLS with HC3 robust standard errors | Weekdays 2019-2025 | Bars show 95% CI")
+
+    # Footnote about Spring Season dummy
+    fig.text(0.12, 0.01,
+             "* Spring Season is a calendar dummy (Mar–May=1), not a weather variable.\n"
+             f"  Weather-only R² = {r2_wx:.3f} ({r2_wx*100:.1f}%) excludes this term.",
+             fontsize=7, color=P["subtext"], style="italic")
+
+    caption(fig,
+        f"{se_method} | Weekdays 2019–2025 | Bars show 95% CI | "
+        f"Seasonality not removed — interpret with caution")
     save(fig, "09_ols_coefficients.png")
 
 
@@ -771,20 +1020,42 @@ def main():
     print("=" * 65)
     print("NS POTHOLE PROJECT — STEP 2: STATISTICAL ANALYSIS")
     print("=" * 65)
+    print("""
+METHODOLOGY NOTE
+────────────────────────────────────────────────────────────
+Correlation method : Repeated lagged bivariate Spearman correlations
+                     (NOT formal time-series cross-correlation / CCF)
+Multiple testing   : Bonferroni correction applied (α/n_tests)
+Autocorrelation    : Effective N estimated via AR(1) approximation
+Regression SE      : Newey-West HAC (if statsmodels installed) else HC3
+Weekday filter     : Applied consistently to BOTH correlations and OLS
+Seasonality note   : Spring Season dummy is a calendar variable, not
+                     a weather variable. Weather-only R² reported separately.
+────────────────────────────────────────────────────────────
+""")
 
     if not os.path.exists(INPUT_CSV):
         print(f"\n✗  Input file not found: {INPUT_CSV}")
         print("   Run 01_collect_data.py first.")
         return
 
+    if not HAS_STATSMODELS:
+        print("  NOTE: statsmodels not installed — using HC3 SE instead of Newey-West.")
+        print("  Install with: pip install statsmodels\n")
+
     df      = load(INPUT_CSV)
     quality_report(df)
 
     daily   = build_features(df)
     corr_df = correlations(daily)
-    corr_df.to_csv("outputs/correlation_table.csv", index=False)
 
-    reg_df, r2 = regression(daily)
+    # Save enhanced correlation table with Bonferroni corrections
+    if not corr_df.empty:
+        corr_df.to_csv("outputs/correlation_table.csv", index=False)
+        print(f"\n  Saved: outputs/correlation_table.csv "
+              f"({len(corr_df)} features, includes Bonferroni-corrected p-values)")
+
+    reg_df, r2_full, r2_wx, dw = regression(daily)
 
     reg_results = regional(df)
     if not reg_results.empty:
@@ -799,22 +1070,41 @@ def main():
     plot_ftc_boxplot(daily)
     plot_snow_analysis(daily)
     plot_regional_heatmap(reg_results)
-    plot_ols_coefficients(reg_df, r2)
+    plot_ols_coefficients(reg_df, r2_full, r2_wx, dw)
 
     print("\n" + "=" * 65)
     print("DONE — all outputs written to outputs/")
     print("=" * 65)
     print(f"""
 RESULTS SUMMARY
-───────────────────────────────────────────
-OLS R²        : {r2:.4f}  ({r2*100:.1f}% of variance explained, weekdays)
+───────────────────────────────────────────────────────────
+OLS R² (full model incl. Spring dummy) : {r2_full:.4f}  ({r2_full*100:.1f}%)
+OLS R² (weather variables only)        : {r2_wx:.4f}  ({r2_wx*100:.1f}%)
+Durbin-Watson                          : {dw:.3f}
+SE method                              : {"Newey-West HAC" if HAS_STATSMODELS else "HC3 (install statsmodels for HAC)"}
 Figures saved : outputs/01 – 09 PNG files
-Tables saved  : outputs/correlation_table.csv
+Tables saved  : outputs/correlation_table.csv  (incl. Bonferroni p-values)
                outputs/regional_results.csv
 
-Top 8 predictors (Spearman r):""")
-    for _, row in corr_df.head(8).iterrows():
-        print(f"  {row['Feature']:<30} r={row['r']:+.4f}  p={row['p']:.4f}")
+METHODOLOGICAL NOTES FOR REPORTING
+───────────────────────────────────────────────────────────
+1. Describe as "repeated lagged bivariate Spearman correlations"
+   NOT "Spearman cross-correlation" (different statistical procedure)
+2. Bonferroni correction applied — see p_bonferroni column in CSV
+3. Effective N < raw N due to autocorrelation — p-values approximate
+4. Spring Season R² contribution is a calendar effect, not a weather effect
+5. Seasonality was not removed from either series before correlation
+   — shared winter trends may inflate correlation estimates
+6. For formal publication, consider: STL seasonal decomposition,
+   negative binomial regression, or block bootstrap inference
+
+Top 8 predictors (lagged Spearman r, weekdays only):""")
+    if not corr_df.empty:
+        for _, row in corr_df.head(8).iterrows():
+            sig = "★" if row.get("sig_bonferroni", False) else " "
+            print(f"  {sig} {row['Feature']:<32} r={row['r']:+.4f}  "
+                  f"p_raw={row['p_raw']:.4f}  p_bonf={row['p_bonferroni']:.4f}  "
+                  f"Ne={row['N_eff']}")
 
 
 if __name__ == "__main__":
