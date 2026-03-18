@@ -19,128 +19,111 @@ st.set_page_config(
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Roboto+Condensed:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
-/* ─── LIGHT ──────────────────────────────── */
+/* ══════════════════════════════════════════
+   NS GOVERNMENT BRAND PALETTE
+   Primary Blue:  #0045B8  (NS flag blue)
+   Gold/Yellow:   #FDD54E  (NS flag gold)
+   Red:           #D30731  (NS flag red)
+   White:         #FFFFFF
+   Dark Navy:     #002366  (deep navy for headers)
+   Light Grey:    #F4F6F9  (page background)
+   ══════════════════════════════════════════ */
+
 :root {
-  --bg: #F2F4F8;
-  --surface: #FFFFFF;
-  --surface2: #F7F8FC;
-  --surface3: #EFF1F7;
-  --border: #E0E4EF;
-  --border2: #C8CFDF;
-  --text: #080E1F;
-  --text2: #1A2540;
-  --sub: #4A5578;
-  --faint: #8A94B0;
-  --divider: rgba(0,0,0,0.07);
+  /* ─── Page backgrounds ─── */
+  --bg:          #F4F6F9;
+  --surface:     #FFFFFF;
+  --surface2:    #F0F3F8;
+  --surface3:    #E8EDF5;
+  --border:      #D0D9E8;
+  --border2:     #B8C5D8;
+  --divider:     rgba(0,69,184,0.08);
 
-  --red: #B91C1C;
-  --red-v: #DC2626;
-  --red-bg: rgba(185,28,28,0.07);
-  --red-bdr: rgba(185,28,28,0.2);
+  /* ─── Typography ─── */
+  --text:        #0D1B3E;
+  --text2:       #1A2F5A;
+  --sub:         #3A4E72;
+  --faint:       #5A6E92;
 
-  --blue: #1D4ED8;
-  --blue-v: #2563EB;
-  --blue-bg: rgba(29,78,216,0.07);
-  --blue-bdr: rgba(29,78,216,0.2);
+  /* ─── NS Brand: Primary Blue ─── */
+  --red:         #004CB3;
+  --red-v:       #0045B8;
+  --red-bg:      rgba(0,69,184,0.07);
+  --red-bdr:     rgba(0,69,184,0.22);
 
-  --amber: #B45309;
-  --amber-v: #D97706;
-  --amber-bg: rgba(180,83,9,0.07);
-  --amber-bdr: rgba(180,83,9,0.2);
+  /* ─── NS Brand: Gold ─── */
+  --amber:       #B8860B;
+  --amber-v:     #D4A017;
+  --amber-bg:    rgba(253,213,78,0.18);
+  --amber-bdr:   rgba(184,134,11,0.35);
 
-  --green: #15803D;
-  --green-v: #16A34A;
-  --green-bg: rgba(21,128,61,0.07);
-  --green-bdr: rgba(21,128,61,0.2);
+  /* ─── NS Brand: Red ─── */
+  --blue:        #A8001F;
+  --blue-v:      #D30731;
+  --blue-bg:     rgba(211,7,49,0.06);
+  --blue-bdr:    rgba(211,7,49,0.22);
 
-  --slate: #334155;
-  --slate-bg: rgba(51,65,85,0.06);
-  --slate-bdr: rgba(51,65,85,0.18);
+  /* ─── Green (kept for positive) ─── */
+  --green:       #1A6B3C;
+  --green-v:     #15803D;
+  --green-bg:    rgba(26,107,60,0.07);
+  --green-bdr:   rgba(26,107,60,0.22);
 
-  /* sidebar */
-  --sb: #111827;
-  --sb2: #1F2937;
-  --sb-txt: #F9FAFB;
-  --sb-sub: #9CA3AF;
-  --sb-faint: #4B5563;
-  --sb-line: rgba(255,255,255,0.07);
-  --sb-hover: rgba(255,255,255,0.05);
-  --sb-dot: #EF4444;
+  /* ─── Slate (neutral) ─── */
+  --slate:       #3A4E72;
+  --slate-bg:    rgba(58,78,114,0.06);
+  --slate-bdr:   rgba(58,78,114,0.20);
+
+  /* ─── Sidebar: NS Deep Navy ─── */
+  --sb:          #002366;
+  --sb2:         #003090;
+  --sb-txt:      #FFFFFF;
+  --sb-sub:      #A8BDD8;
+  --sb-faint:    #4A6490;
+  --sb-line:     rgba(255,255,255,0.10);
+  --sb-hover:    rgba(253,213,78,0.12);
+  --sb-dot:      #FDD54E;
 }
 
-/* ─── DARK ───────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #060A14;
-    --surface: #0D1525;
-    --surface2: #121D30;
-    --surface3: #0A1020;
-    --border: #1A2840;
-    --border2: #243350;
-    --text: #F0F4FF;
-    --text2: #C0CCED;
-    --sub: #7A8EBB;
-    --faint: #3D5070;
-    --divider: rgba(255,255,255,0.06);
-
-    --red: #F87171;
-    --red-v: #FCA5A5;
-    --red-bg: rgba(248,113,113,0.1);
-    --red-bdr: rgba(248,113,113,0.28);
-
-    --blue: #60A5FA;
-    --blue-v: #93C5FD;
-    --blue-bg: rgba(96,165,250,0.09);
-    --blue-bdr: rgba(96,165,250,0.26);
-
-    --amber: #FBBF24;
-    --amber-v: #FDE68A;
-    --amber-bg: rgba(251,191,36,0.09);
-    --amber-bdr: rgba(251,191,36,0.26);
-
-    --green: #34D399;
-    --green-v: #6EE7B7;
-    --green-bg: rgba(52,211,153,0.09);
-    --green-bdr: rgba(52,211,153,0.24);
-
-    --slate: #94A3B8;
-    --slate-bg: rgba(148,163,184,0.08);
-    --slate-bdr: rgba(148,163,184,0.2);
-
-    --sb: #060A14;
-    --sb2: #0D1525;
-    --sb-txt: #F0F4FF;
-    --sb-sub: #64748B;
-    --sb-faint: #1E2D40;
-    --sb-line: rgba(255,255,255,0.05);
-    --sb-hover: rgba(255,255,255,0.04);
-    --sb-dot: #F87171;
-  }
-}
-
-/* ─── BASE ───────────────────────────────── */
+/* ─── BASE ─────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, [class*="css"] {
-  font-family: 'DM Sans', system-ui, sans-serif !important;
+  font-family: 'Roboto', system-ui, sans-serif !important;
   color: var(--text) !important;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 .stApp { background: var(--bg) !important; }
 #MainMenu, footer, header { visibility: hidden; }
 .block-container {
   padding: 2.5rem 3rem 6rem !important;
-  max-width: 1180px !important;
+  max-width: 1200px !important;
 }
 
-/* ─── SIDEBAR ────────────────────────────── */
+/* ─── NS GOVERNMENT TOP BANNER ──────────────── */
+.block-container::before {
+  content: "Government of Nova Scotia  ·  Department of Public Works  ·  TIR Analysis 2019–2025";
+  display: block;
+  background: #002366;
+  color: #FDD54E;
+  font-family: 'Roboto Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 7px 0;
+  margin: -2.5rem -3rem 2rem -3rem;
+  text-align: center;
+  border-bottom: 3px solid #FDD54E;
+}
+
+/* ─── SIDEBAR: NS NAVY ───────────────────────── */
 [data-testid="stSidebar"] {
-  background: var(--sb) !important;
-  border-right: 1px solid var(--sb-line) !important;
-  min-width: 260px !important;
-  max-width: 260px !important;
+  background: #002366 !important;
+  border-right: 4px solid #FDD54E !important;
+  min-width: 265px !important;
+  max-width: 265px !important;
 }
 [data-testid="stSidebar"] > div:first-child { padding: 0 !important; }
 [data-testid="collapsedControl"] { display: none !important; }
@@ -150,38 +133,40 @@ html, body, [class*="css"] {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  color: var(--sb-sub) !important;
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 12px !important;
+  border-left: 3px solid transparent !important;
+  color: #A8BDD8 !important;
+  font-family: 'Roboto', sans-serif !important;
+  font-size: 12.5px !important;
   font-weight: 400 !important;
-  padding: 8px 16px 8px 22px !important;
+  padding: 9px 16px 9px 20px !important;
   width: 100% !important;
   text-align: left !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  transition: color .13s, background .13s !important;
-  letter-spacing: 0.01em !important;
-  position: relative !important;
+  transition: all .15s !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-  background: var(--sb-hover) !important;
-  color: var(--sb-txt) !important;
+  background: rgba(253,213,78,0.10) !important;
+  color: #FFFFFF !important;
+  border-left: 3px solid rgba(253,213,78,0.5) !important;
 }
 
-/* ─── CHARTS ─────────────────────────────── */
+/* ─── CHARTS ────────────────────────────────── */
 [data-testid="stPlotlyChart"] > div {
-  border-radius: 14px !important;
-  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  border: 1px solid #D0D9E8 !important;
+  border-top: 3px solid #0045B8 !important;
   overflow: hidden !important;
-  background: var(--surface) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(0,35,102,0.08) !important;
 }
 
-/* ─── SCROLLBAR ──────────────────────────── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+/* ─── SCROLLBAR ─────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #E8EDF5; }
+::-webkit-scrollbar-thumb { background: #0045B8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #002366; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -208,23 +193,26 @@ if "s" not in st.session_state:
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    # Brand block
+    # Brand block — NS Government
     st.markdown(
-        '<div style="padding:32px 24px 24px;border-bottom:1px solid var(--sb-line)">'
-        '<p style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:500;'
-        'color:var(--sb-dot);letter-spacing:3.5px;margin:0 0 8px">NS · POTHOLE</p>'
-        '<p style="font-family:\'DM Sans\',serif;font-size:16px;'
-        'color:var(--sb-txt);margin:0 0 4px;line-height:1.3">'
-        'Freeze-Thaw Analysis</p>'
-        '<p style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--sb-sub);'
-        'margin:0;letter-spacing:.5px">2019 – 2025</p>'
+        '<div style="background:#001A4E;padding:20px 20px 14px;border-bottom:3px solid #FDD54E">'
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        '<div style="width:7px;height:7px;background:#FDD54E;border-radius:50%"></div>'
+        '<p style="font-family:\'Roboto Condensed\',sans-serif;font-size:9px;font-weight:700;'
+        'color:#FDD54E;letter-spacing:2.5px;text-transform:uppercase;margin:0">'
+        'Nova Scotia · Public Works</p></div>'
+        '<p style="font-family:\'Roboto Condensed\',sans-serif;font-size:16px;font-weight:700;'
+        'color:#FFFFFF;margin:0 0 3px;line-height:1.2;letter-spacing:0.2px">'
+        'Pothole Analysis</p>'
+        '<p style="font-family:\'Roboto Mono\',monospace;font-size:11px;color:#7A9FC0;'
+        'margin:0;font-weight:400">NS TIR + ECCC · 2019–2025</p>'
         '</div>',
         unsafe_allow_html=True)
 
     st.markdown(
-        '<p style="font-family:\'DM Mono\',monospace;font-size:8.5px;letter-spacing:2.5px;'
-        'text-transform:uppercase;color:var(--sb-faint);padding:20px 24px 6px;'
-        'border-bottom:none">Navigation</p>',
+        '<p style="font-family:\'Roboto Condensed\',sans-serif;font-size:10px;font-weight:700;'
+        'letter-spacing:2px;text-transform:uppercase;color:#4A6490;'
+        'padding:14px 20px 6px;margin:0">Navigation</p>',
         unsafe_allow_html=True)
 
     S = st.session_state.s
@@ -237,10 +225,10 @@ with st.sidebar:
     st.markdown(f"""
     <style>
     [data-testid="stSidebar"] .stButton:nth-of-type({S+1}) > button {{
-      background: rgba(255,255,255,0.06) !important;
-      color: var(--sb-txt) !important;
+      background: rgba(253,213,78,0.15) !important;
+      color: #FFFFFF !important;
       font-weight: 600 !important;
-      border-right: 2px solid var(--sb-dot) !important;
+      border-left: 3px solid #FDD54E !important;
     }}
     </style>""", unsafe_allow_html=True)
 
@@ -249,7 +237,7 @@ with st.sidebar:
         f'<div style="padding:14px 22px 18px;border-top:1px solid var(--sb-line)">'
         f'<div style="display:flex;justify-content:space-between;align-items:center;'
         f'margin-bottom:6px">'
-        f'<span style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--sb-faint);letter-spacing:.5px">{NUMS[S]}&nbsp;of&nbsp;{NUMS[-1]}</span>'
+        f'<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--sb-faint);letter-spacing:.5px">{NUMS[S]}&nbsp;of&nbsp;{NUMS[-1]}</span>'
         f'<div style="display:flex;gap:3px;align-items:center">'
         + "".join(
             f'<div style="width:{14 if j==S else 5}px;height:3px;'
@@ -258,8 +246,8 @@ with st.sidebar:
             for j in range(len(SLIDES))
         )
         + f'</div></div>'
-        f'<p style="font-size:9.5px;color:var(--sb-faint);font-weight:300">'
-        f'MBAN 2026 · NS TIR + ECCC</p>'
+        f'<p style="font-size:11.5px;color:var(--sb-faint);font-weight:400">'
+        f'MBAN 2026 · Nova Scotia TIR + ECCC</p>'
         f'</div>',
         unsafe_allow_html=True)
 
@@ -287,14 +275,14 @@ G = dict(
 def pset(fig, h=400, l=56, r=32, t=46, b=54):
     fig.update_layout(
         height=h, plot_bgcolor=G["bg"], paper_bgcolor=G["bg"],
-        font=dict(family="DM Sans", size=12, color=G["tick"]),
+        font=dict(family="Roboto", size=12, color=G["tick"]),
         margin=dict(l=l, r=r, t=t, b=b),
         legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0,
                     font=dict(size=11.5, color=G["tick"]),
                     orientation="h", y=1.07, x=0, itemsizing="constant"),
         hoverlabel=dict(bgcolor="rgba(8,14,31,0.94)",
                         bordercolor="rgba(255,255,255,0.12)",
-                        font=dict(family="DM Sans", size=12, color="#F0F4FF")),
+                        font=dict(family="Roboto", size=12, color="#F0F4FF")),
     )
     fig.update_xaxes(gridcolor=G["grid"], zeroline=False,
                      tickfont=dict(size=11, color=G["tick"]),
@@ -321,14 +309,14 @@ def slide_header(num, title, sub=""):
     st.markdown(
         f'<div style="margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--divider)">'
         f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:12px">'
-        f'<span style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;'
-        f'color:var(--faint);letter-spacing:1.5px">{num}</span>'
-        f'<h1 style="font-family:\'DM Sans\',serif;font-size:clamp(1.6rem,3.2vw,2.2rem);'
-        f'font-weight:400;font-weight:700;color:var(--text);line-height:1.18;'
-        f'letter-spacing:-0.3px">{title}</h1>'
+        f'<span style="font-family:\'DM Mono\',monospace;font-size:12px;font-weight:600;'
+        f'color:var(--sub);letter-spacing:1px">{num}</span>'
+        f'<h1 style="font-family:\'Roboto Condensed\',sans-serif;font-size:clamp(1.5rem,3vw,2.1rem);'
+        f'font-weight:700;color:#0D1B3E;line-height:1.15;'
+        f'letter-spacing:-0.2px">{title}</h1>'
         f'</div>'
         + (f'<p style="font-size:14px;color:var(--sub);line-height:1.8;max-width:820px;'
-           f'font-weight:300">{sub}</p>' if sub else "")
+           f'font-weight:400">{sub}</p>' if sub else "")
         + '</div>', unsafe_allow_html=True)
 
 
@@ -340,7 +328,7 @@ def box(title, body, accent="var(--blue)"):
         f'<p style="font-size:12px;font-weight:600;color:{accent};margin:0 0 7px;'
         f'letter-spacing:.03em">{title}</p>'
         f'<p style="font-size:13px;color:var(--text2);line-height:1.75;margin:0;'
-        f'font-weight:300">{body}</p>'
+        f'font-weight:400">{body}</p>'
         f'</div>', unsafe_allow_html=True)
 
 
@@ -349,11 +337,11 @@ def kpi(label, value, sub="", color="var(--text)", border_color=None):
     st.markdown(
         f'<div style="background:var(--surface);border:1px solid {bc};'
         f'border-radius:12px;padding:22px 16px;text-align:center">'
-        f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:500;'
+        f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;'
         f'color:var(--faint);text-transform:uppercase;letter-spacing:2.5px;margin:0 0 11px">{label}</p>'
-        f'<p style="font-family:\'DM Sans\',serif;font-size:clamp(1.5rem,2.8vw,1.9rem);'
+        f'<p style="font-family:\'Roboto Condensed\',sans-serif;font-size:clamp(1.5rem,2.8vw,2rem);font-weight:700;'
         f'color:{color};line-height:1;margin:0 0 7px">{value}</p>'
-        + (f'<p style="font-size:11px;color:var(--faint);margin:0;font-weight:300">{sub}</p>' if sub else "")
+        + (f'<p style="font-size:11.5px;color:var(--sub);margin:0;font-weight:400">{sub}</p>' if sub else "")
         + '</div>', unsafe_allow_html=True)
 
 
@@ -363,8 +351,8 @@ def divider():
 
 def label(text):
     st.markdown(
-        f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:500;'
-        f'color:var(--faint);text-transform:uppercase;letter-spacing:2.5px;margin:0 0 16px">{text}</p>',
+        f'<p style="font-family:\'DM Mono\',monospace;font-size:12px;font-weight:600;'
+        f'color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin:0 0 16px">{text}</p>',
         unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -374,8 +362,8 @@ if S == 0:
     # Hero headline
     st.markdown(
         '<div style="padding:8px 0 36px">'
-        '<p style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:500;'
-        'letter-spacing:3.5px;color:var(--red);margin:0 0 20px">NOVA SCOTIA TIR + ECCC · 2019–2025</p>'
+        '<p style="font-family:\'DM Mono\',monospace;font-size:11.5px;font-weight:500;'
+        'letter-spacing:2.5px;color:#0045B8;margin:0 0 20px">NOVA SCOTIA · TIR + ECCC · 2019–2025</p>'
         '<h1 style="font-family:\'DM Sans\',serif;'
         'font-size:clamp(2.2rem,5vw,3.6rem);font-weight:400;'
         'color:var(--text);line-height:1.08;letter-spacing:-1px;margin:0 0 18px">'
@@ -383,12 +371,12 @@ if S == 0:
         '<span style="color:var(--red)">before</span> they appear?'
         '</h1>'
         '<p style="font-size:15px;color:var(--sub);line-height:1.85;max-width:620px;'
-        'font-weight:300;margin:0 0 30px">'
+        'font-weight:400;margin:0 0 30px">'
         'A 6-year analysis of <strong style="color:var(--text);font-weight:500">391,795 service '
         'records</strong> and daily weather from 5 ECCC stations reveals a consistent '
         '<strong style="color:var(--red);font-weight:500">5-day window</strong> between '
         'freeze-thaw events and pothole complaint surges.</p>'
-        '<div style="width:32px;height:2px;background:var(--red);border-radius:1px"></div>'
+        '<div style="width:48px;height:3px;background:#FDD54E;border-radius:2px;margin-top:4px"></div>'
         '</div>', unsafe_allow_html=True)
 
     # KPI row
@@ -425,9 +413,6 @@ if S == 0:
             "Daily climate data from 5 verified weather stations: Halifax Stanfield, "
             "Greenwood A, Truro, Sydney A, and Yarmouth A. Merged to complaints by "
             "geographic region and date.", "var(--green)")
-        box("Use the sidebar to navigate",
-            "Each slide covers one finding — a chart and a plain-English explanation. "
-            "Read in order for the full story, or jump to any slide directly.", "var(--slate)")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE 1 — THE PROBLEM
@@ -447,17 +432,17 @@ elif S == 1:
             x=years, y=vals,
             marker=dict(color=clrs, line=dict(width=0), cornerradius=5),
             text=[f"{v:,}" for v in vals], textposition="outside",
-            textfont=dict(family="DM Mono", size=11, color=G["tick"]),
+            textfont=dict(family="Roboto Mono", size=11, color=G["tick"]),
             hovertemplate="<b>%{x}</b> — %{y:,} complaints<extra></extra>",
         ))
         for yr, lbl in [("2022","Severe FT season"),("2025","Active FT season")]:
             fig.add_annotation(x=yr, y=vals[years.index(yr)], text=f"↑ {lbl}",
                                showarrow=False, yshift=27,
-                               font=dict(family="DM Sans", size=10.5, color=C["red"]))
+                               font=dict(family="Roboto", size=10.5, color=C["red"]))
         fig = pset(fig, h=380, l=52, r=24, t=42, b=46)
         fig.update_layout(
             title=dict(text="Annual Pothole Complaints · 2019–2025",
-                       font=dict(family="DM Sans", size=13.5, color=G["tick"])),
+                       font=dict(family="Roboto", size=13.5, color=G["tick"])),
             showlegend=False,
             yaxis=dict(title="Complaints", tickformat=","),
             bargap=0.30)
@@ -506,7 +491,7 @@ elif S == 2:
             f'<p style="font-family:\'DM Mono\',monospace;font-size:1.15rem;font-weight:500;'
             f'color:{color};margin-bottom:12px">{num}</p>'
             f'<p style="font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:8px">{title}</p>'
-            f'<p style="font-size:11.5px;color:var(--sub);line-height:1.65;font-weight:300">{desc}</p>'
+            f'<p style="font-size:11.5px;color:var(--sub);line-height:1.65;font-weight:400">{desc}</p>'
             f'</div>', unsafe_allow_html=True)
 
     divider()
@@ -528,7 +513,7 @@ elif S == 2:
         st.markdown(
             '<div style="background:var(--surface);border:1px solid var(--border);'
             'border-radius:12px;padding:24px">'
-            '<p style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:2.5px;'
+            '<p style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2.5px;'
             'color:var(--faint);text-transform:uppercase;margin-bottom:18px">Key Formulas</p>'
             '<div style="background:var(--red-bg);border:1px solid var(--red-bdr);'
             'border-radius:8px;padding:18px 20px;margin-bottom:18px">'
@@ -539,7 +524,7 @@ elif S == 2:
             '&nbsp;&nbsp;AND Tmin(t) &lt; 0°C<br><br>'
             'FTC_14d(t) = Σ FT_day(t−14 … t−1)</code>'
             '</div>'
-            '<p style="font-size:13px;color:var(--sub);line-height:1.8;font-weight:300">'
+            '<p style="font-size:13px;color:var(--sub);line-height:1.8;font-weight:400">'
             'The window is shifted one day forward to prevent data leakage. Only weather '
             'information available <em>before</em> the complaint date is used as a predictor.</p>'
             '</div>',
@@ -571,25 +556,25 @@ elif S == 3:
         marker=dict(size=[14 if m=="Jul" else 6 for m in months],
                     color=[C["red"] if m=="Jul" else "rgba(239,68,68,0.5)" for m in months],
                     line=dict(color="rgba(0,0,0,0.15)", width=1.5)),
-        fill="tozeroy", fillcolor="rgba(239,68,68,0.045)",
+        fill="tozeroy", fillcolor="rgba(211,7,49,0.06)",
         hovertemplate="<b>%{x}</b> %{y:.1f} complaints/day<extra></extra>"), secondary_y=True)
     fig.add_annotation(x="Jul", y=18.3, text="Peak 18.3 / day",
                        showarrow=False, yshift=22, yref="y2",
-                       font=dict(family="DM Mono", size=10.5, color=C["red"]))
+                       font=dict(family="Roboto Mono", size=10.5, color=C["red"]))
     fig.add_annotation(x="Mar", y=150, text="Peak FT month",
                        showarrow=False, yshift=22, yref="y",
-                       font=dict(family="DM Mono", size=10.5, color=C["blue"]))
+                       font=dict(family="Roboto Mono", size=10.5, color=C["blue"]))
     fig = pset(fig, h=400, l=60, r=68, t=44, b=48)
     fig.update_layout(
         title=dict(text="Monthly Freeze-Thaw Days · vs Avg Daily Pothole Complaints",
-                   font=dict(family="DM Sans", size=13.5, color=G["tick"])),
+                   font=dict(family="Roboto", size=13.5, color=G["tick"])),
         bargap=0.18)
     fig.update_yaxes(title="Freeze-Thaw Days", secondary_y=False,
-                     title_font=dict(color="rgba(59,130,246,0.88)"),
-                     tickfont=dict(color="rgba(59,130,246,0.65)"))
+                     title_font=dict(color="#1D4ED8"),
+                     tickfont=dict(color="#1D4ED8"))
     fig.update_yaxes(title="Avg Potholes / Day", secondary_y=True,
-                     title_font=dict(color="rgba(239,68,68,0.88)"),
-                     tickfont=dict(color="rgba(239,68,68,0.65)"))
+                     title_font=dict(color="#B91C1C"),
+                     tickfont=dict(color="#B91C1C"))
     st.plotly_chart(fig, use_container_width=True)
 
     c1, c2, c3 = st.columns(3, gap="large")
@@ -617,7 +602,7 @@ elif S == 4:
                  "Spearman cross-correlation computed at every lag from 1 to 21 days. "
                  "The minimum of the red curve at Day 5 is the central result of the entire analysis.")
 
-    lags = list(range(1, 22))
+    lags  = list(range(1, 22))
     ftc_r = [-0.0437,-0.0461,-0.0572,-0.0742,-0.0810,-0.0541,-0.0482,
              -0.0376,-0.0601,-0.0600,-0.0452,-0.0347,-0.0630,-0.0705,
              -0.0453,-0.0430,-0.0504,-0.0401,-0.0252,-0.0291,-0.0427]
@@ -626,64 +611,123 @@ elif S == 4:
              -0.0203, 0.0196, 0.0198, 0.0021,-0.0101,-0.0029,-0.0164]
 
     fig = go.Figure()
-    fig.add_vrect(x0=4.5, x1=7.5, fillcolor="rgba(245,158,11,0.06)",
-                  line=dict(color="rgba(245,158,11,0.45)", width=1, dash="dash"),
-                  annotation_text="5–7 Day window", annotation_position="top",
-                  annotation_font=dict(family="DM Mono", size=10, color=C["amber"]))
-    fig.add_hline(y=0, line_color=G["zero"], line_width=1.2)
+
+    # ── Clean background — NS blue/grey tones only ────────────────────────
+    # Below-zero band — very subtle NS navy tint
+    fig.add_hrect(y0=-0.115, y1=0,
+                  fillcolor="rgba(0,35,102,0.05)", line_width=0)
+    # Above-zero band — very subtle
+    fig.add_hrect(y0=0, y1=0.075,
+                  fillcolor="rgba(0,69,184,0.04)", line_width=0)
+
+    # Action window — NS gold, clean
+    fig.add_vrect(x0=4.5, x1=7.5,
+                  fillcolor="rgba(196,154,0,0.12)",
+                  line=dict(color="#C49A00", width=1.5, dash="dash"))
+    fig.add_annotation(x=6, y=0.068,
+        text="5–7 Day Action Window",
+        showarrow=False, xanchor="center",
+        font=dict(family="Roboto Condensed", size=12, color="#8B6914"),
+        bgcolor="rgba(252,246,220,0.85)",
+        bordercolor="#C49A00", borderwidth=1, borderpad=6)
+
+    # Zero line — NS navy
+    fig.add_hline(y=0, line_color="#002366", line_width=1.5)
+
+    # ── Precipitation — NS blue, dotted, no fill ──────────────────────────
     fig.add_trace(go.Scatter(
-        x=lags, y=ftc_r, name="Freeze-Thaw Count (FTC)",
+        x=list(range(1,22)), y=pre_r,
+        name="Precipitation (no consistent lag)",
         mode="lines+markers",
-        line=dict(color=C["red"], width=2.8, shape="spline"),
-        marker=dict(size=[18 if i==4 else 6 for i in range(21)],
-                    color=[C["red"] if i==4 else "rgba(239,68,68,0.38)" for i in range(21)],
-                    symbol=["star" if i==4 else "circle" for i in range(21)],
-                    line=dict(color="rgba(0,0,0,0.1)", width=1)),
-        fill="tozeroy", fillcolor="rgba(239,68,68,0.06)",
-        hovertemplate="Day %{x} lag — FTC r = %{y:.4f}<extra></extra>"))
+        line=dict(color="#0045B8", width=2, shape="spline", dash="dot"),
+        marker=dict(size=6, color="#0045B8",
+                    line=dict(color="#FFFFFF", width=1)),
+        opacity=0.75,
+        hovertemplate="<b>Day %{x}</b> — Precip r = %{y:.4f}<extra></extra>",
+    ))
+
+    # ── FTC line — NS red, clean fill ────────────────────────────────────
     fig.add_trace(go.Scatter(
-        x=lags, y=pre_r, name="Precipitation",
+        x=list(range(1,22)), y=ftc_r,
+        name="Freeze-Thaw Count (peaks Day 5)",
         mode="lines+markers",
-        line=dict(color=C["blue"], width=1.8, dash="dot", shape="spline"),
-        marker=dict(size=5, color="rgba(59,130,246,0.5)",
-                    line=dict(color="rgba(0,0,0,0.08)", width=1)),
-        hovertemplate="Day %{x} lag — Precip r = %{y:.4f}<extra></extra>"))
-    fig.add_annotation(x=5, y=-0.081,
-        text=" Day 5 · r = −0.081",
-        showarrow=True, arrowhead=2, arrowwidth=1.5, arrowcolor=C["red"],
-        ax=88, ay=-62,
-        font=dict(family="DM Sans", size=12, color=C["red"]),
-        bgcolor="rgba(8,14,31,0.9)", bordercolor="rgba(239,68,68,0.5)",
-        borderwidth=1, borderpad=8)
-    fig = pset(fig, h=420, l=65, r=30, t=46, b=54)
+        line=dict(color="#D30731", width=3, shape="spline"),
+        marker=dict(
+            size=[20 if i == 4 else 7 for i in range(21)],
+            color=["#D30731" if i == 4 else "rgba(211,7,49,0.5)" for i in range(21)],
+            symbol=["star" if i == 4 else "circle" for i in range(21)],
+            line=dict(color="#FFFFFF", width=1.5)),
+        fill="tozeroy",
+        fillcolor="rgba(211,7,49,0.12)",
+        hovertemplate="<b>Day %{x}</b> — FTC r = %{y:.4f}<extra></extra>",
+    ))
+
+    # ── Single clean Day 5 callout — NS styled ───────────────────────────
+    fig.add_annotation(
+        x=5, y=-0.081,
+        text="<b>Day 5 — Peak</b><br>r = −0.081",
+        showarrow=True, arrowhead=2, arrowwidth=2,
+        arrowcolor="#D30731", ax=80, ay=-55, xanchor="left",
+        font=dict(family="Roboto", size=12, color="#FFFFFF"),
+        bgcolor="#D30731",
+        bordercolor="#D30731", borderwidth=0, borderpad=9,
+        align="left")
+
+    fig = pset(fig, h=420, l=68, r=28, t=48, b=54)
     fig.update_layout(
-        title=dict(text="Spearman Cross-Correlation: Freeze-Thaw Events → Pothole Complaints · Lags 1–21 Days",
-                   font=dict(family="DM Sans", size=13.5, color=G["tick"])),
-        xaxis=dict(title="Days After the Weather Event", tickvals=lags, tickfont=dict(size=10.5)),
-        yaxis=dict(title="Spearman r", range=[-0.105, 0.065]))
+        title=dict(
+            text="Freeze-Thaw events predict pothole complaints exactly 5 days later",
+            font=dict(family="Roboto Condensed", size=15, color="#002366")),
+        legend=dict(orientation="h", y=1.07, x=0,
+                    font=dict(size=12, color="#1A3568"),
+                    bgcolor="rgba(0,0,0,0)"),
+        xaxis=dict(
+            title="Days After the Freeze-Thaw Event",
+            tickvals=list(range(1, 22)),
+            ticktext=[str(i) for i in range(1, 22)],
+            tickfont=dict(size=11.5, color="#1A3568"),
+            tickangle=0,
+            title_font=dict(size=12, color="#1A3568")),
+        yaxis=dict(
+            title="Correlation Strength (Spearman r)",
+            range=[-0.115, 0.080],
+            tickformat=".3f",
+            title_font=dict(size=12, color="#1A3568")))
     st.plotly_chart(fig, use_container_width=True)
 
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-    with c1: kpi("FTC Peak Lag", "Day 5", "r = −0.081 (all years)", "var(--red)", "var(--red-bdr)")
-    with c2: kpi("Spring-Only r", "−0.143", "p = 0.0003 ", "var(--red)", "var(--red-bdr)")
-    with c3: kpi("Spring Amplification","3×", "stronger than full year", "var(--amber)", "var(--amber-bdr)")
-    with c4: kpi("Action Window", "5–7 days", "pre-stage on FT day 0", "var(--blue)", "var(--blue-bdr)")
-
+    # ── KPI strip ─────────────────────────────────────────────────────────
     divider()
-    cl, cr = st.columns(2, gap="large")
-    with cl:
-        box("How to Read This Chart",
-            "Each point on the X-axis is the number of days between a weather event and the "
-            "daily complaint count being measured. The FTC line dips "
-            "<strong style='color:var(--text)'>negative</strong> because during active freeze "
-            "seasons, citizens haven't yet discovered the potholes — complaints are temporarily "
-            "suppressed. Day 5 is where the delayed surge peaks.", "var(--blue)")
-    with cr:
-        box("Why the Spring Signal Is 3× Stronger",
-            "The all-year r of −0.081 triples to −0.143 (p = 0.0003) when restricted to "
-            "March–May. All accumulated winter damage becomes visible simultaneously in spring, "
-            "making the FT → complaint relationship its tightest and most operationally useful.",
-            "var(--red)")
+    c1, c2, c3, c4 = st.columns(4, gap="small")
+    with c1: kpi("Peak Lag Day",        "Day 5",    "r = −0.081 across all 6 years",    "var(--red)",   "var(--red-bdr)")
+    with c2: kpi("Spring-Only r",       "−0.143",   "p = 0.0003 — highly significant",  "var(--red)",   "var(--red-bdr)")
+    with c3: kpi("Spring Amplification","3×",        "Stronger than the full-year signal","var(--amber)", "var(--amber-bdr)")
+    with c4: kpi("Crew Action Window",  "5–7 days", "Pre-stage before phones ring",      "var(--green)", "var(--green-bdr)")
+
+    # ── Reading guide — clean NS card style ───────────────────────────────
+    divider()
+    g1, g2, g3 = st.columns(3, gap="medium")
+    for col, border, bg, title, body in [
+        (g1, "#D30731", "rgba(211,7,49,0.05)",
+         "What is the red shaded area?",
+         "The red fill shows where freeze-thaw activity is suppressing same-day complaints. "
+         "Roads are cracking but potholes are hidden under snow. "
+         "Complaints are delayed — they arrive 5 days later."),
+        (g2, "#C49A00", "rgba(196,154,0,0.07)",
+         "What is the gold highlighted window?",
+         "Days 5–7 is the operational window. When TIR detects a freeze-thaw event today, "
+         "crews should be pre-staged within this window — before any citizen calls come in."),
+        (g3, "#0045B8", "rgba(0,69,184,0.05)",
+         "Why does the blue line look so different?",
+         "Rain has no consistent lag pattern — it drives complaints on the same day. "
+         "Freeze-thaw is unique: the damage is invisible for 5 days before complaints surge."),
+    ]:
+        col.markdown(
+            f'<div style="background:{bg};border:1px solid rgba(0,35,102,0.12);'
+            f'border-left:4px solid {border};border-radius:6px;padding:16px 15px">'
+            f'<p style="font-family:Roboto Condensed,sans-serif;font-size:13px;'
+            f'font-weight:700;color:{border};margin:0 0 8px">{title}</p>'
+            f'<p style="font-size:12.5px;color:#3A4E72;line-height:1.7;font-weight:400;margin:0">{body}</p>'
+            f'</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE 5 — PREDICTORS
@@ -708,7 +752,7 @@ elif S == 5:
             ("Precip 3-day", 0.0451, "rgba(59,130,246,0.62)"),
             ("Rain 7-day", 0.0489, "rgba(59,130,246,0.72)"),
             ("Rain 5-day", 0.0496, "rgba(59,130,246,0.82)"),
-            ("Precip 14-day", 0.0534, "rgba(59,130,246,0.88)"),
+            ("Precip 14-day", 0.0534, "#1D4ED8"),
             ("Precip 5-day", 0.0727, "rgba(59,130,246,0.94)"),
             ("Precip 7-day", 0.0734, C["blue"], True),
         ]
@@ -718,20 +762,20 @@ elif S == 5:
             marker=dict(color=[f[2] for f in features], line=dict(width=0), cornerradius=3),
             text=[f"{f[1]:+.4f}" for f in features],
             textposition="outside",
-            textfont=dict(family="DM Mono", size=10.5, color=G["tick"]),
+            textfont=dict(family="Roboto Mono", size=10.5, color=G["tick"]),
             hovertemplate="<b>%{y}</b> r = %{x:.4f}<extra></extra>"))
         fig.add_vline(x=0, line_color=G["zero"], line_width=1.5)
         # Quadrant labels
         fig.add_annotation(x=-0.05, y=14.7, text="← Freeze-season suppression",
                            showarrow=False, xanchor="right",
-                           font=dict(family="DM Mono", size=9, color="rgba(239,68,68,0.6)"))
+                           font=dict(family="Roboto Mono", size=9, color="#B91C1C"))
         fig.add_annotation(x=0.05, y=14.7, text="Rain-driven surge →",
                            showarrow=False, xanchor="left",
-                           font=dict(family="DM Mono", size=9, color="rgba(59,130,246,0.6)"))
+                           font=dict(family="Roboto Mono", size=9, color="#1D4ED8"))
         fig = pset(fig, h=530, l=142, r=86, t=44, b=46)
         fig.update_layout(
             title=dict(text="Spearman r · Rolling Weather Features vs Daily Pothole Complaints",
-                       font=dict(family="DM Sans", size=13.5, color=G["tick"])),
+                       font=dict(family="Roboto", size=13.5, color=G["tick"])),
             showlegend=False,
             xaxis=dict(title="Spearman r", range=[-0.112, 0.107]),
             yaxis=dict(tickfont=dict(size=11, color=G["tick"])))
@@ -791,23 +835,38 @@ elif S == 6:
             f'white-space:pre-line;line-height:1.4;letter-spacing:0.01em">{name}</p>'
             f'<p style="font-family:\'DM Sans\',serif;font-size:1.55rem;'
             f'color:{acc};margin:0 0 2px;letter-spacing:-0.3px">{n:,}</p>'
-            f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--faint);'
-            f'text-transform:uppercase;letter-spacing:1.5px;margin:0 0 14px">potholes</p>'
+            f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--faint);'
+            f'text-transform:uppercase;letter-spacing:1px;font-size:11px;margin:0 0 14px">Potholes</p>'
             f'<div style="border-top:1px solid var(--border);padding-top:12px">'
-            f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;'
-            f'color:var(--sub);margin:0 0 8px">'
-            f'FTC&nbsp;r&nbsp;=&nbsp;<strong style="color:{sc};font-size:12px">{ftc:+.3f}</strong>'
-            f'&nbsp;<span style="color:var(--faint);font-size:9.5px">{fsig}</span></p>'
+            f'<p style="font-family:\'DM Mono\',monospace;font-size:12px;'
+            f'color:var(--text2);margin:0 0 8px">'
+            f'FTC&nbsp;r&nbsp;=&nbsp;<strong style="color:{sc};font-size:13px;font-weight:700">{ftc:+.3f}</strong>'
+            f'&nbsp;<span style="color:{sc};font-size:12px;font-weight:600">{fsig}</span></p>'
             f'<div style="background:var(--surface3);border-radius:3px;height:4px;overflow:hidden">'
             f'<div style="width:{bar_w}%;height:4px;background:{acc};border-radius:3px;'
             f'transition:width .6s ease"></div></div>'
-            f'<p style="font-size:9px;color:var(--faint);margin:4px 0 0;font-weight:300">'
-            f'signal strength</p>'
+            f'<p style="font-size:11.5px;color:var(--sub);margin:6px 0 0;font-weight:400">'
+            f'Signal strength</p>'
             f'</div></div>', unsafe_allow_html=True)
 
 
-    def _opacity(sig):
-        return 1.0 if sig in ("*","**","***") else 0.22
+    def _bar_color(base_rgb, sig):
+        """Solid colour for significant, lighter for hatched background."""
+        return base_rgb if sig in ("*","**","***") else base_rgb.replace("1.0)", "0.15)")
+
+    def _pattern(sig):
+        """Diagonal hatch for non-significant, empty for significant."""
+        if sig in ("*","**","***"):
+            return dict(shape="", bgcolor="", fgcolor="rgba(0,0,0,0)", size=4)
+        else:
+            return dict(shape="/", bgcolor="rgba(255,255,255,0.6)",
+                        fgcolor="rgba(130,140,160,0.7)", size=5, solidity=0.4)
+
+    def _line_color(base_hex, sig):
+        return base_hex if sig in ("*","**","***") else "rgba(130,140,160,0.6)"
+
+    def _line_width(sig):
+        return 0 if sig in ("*","**","***") else 1.5
 
     def _hover(val, sig):
         lbl = {"ns":"not significant","*":"p < 0.05","**":"p < 0.01","***":"p < 0.001"}
@@ -822,78 +881,140 @@ elif S == 6:
     h_sig2 = ["***","ns","ns","ns","ns"]
 
     fig = go.Figure()
+
+    # 7-day Rainfall — cyan
     fig.add_trace(go.Bar(
-        name="7-day Rainfall",
+        name="7-day Rainfall  (solid = significant  |  hatched = not significant)",
         x=regions_ordered, y=p_r2,
-        marker=dict(color=["rgba(6,182,212,{})".format(_opacity(sg)) for sg in p_sig2],
-                    line=dict(width=0), cornerradius=4),
+        marker=dict(
+            color=["rgba(8,145,178,1.0)" if sg in ("*","**","***") else "rgba(8,145,178,0.12)"
+                   for sg in p_sig2],
+            line=dict(
+                color=["#0045B8" if sg in ("*","**","***") else "rgba(130,140,160,0.55)"
+                       for sg in p_sig2],
+                width=[0 if sg in ("*","**","***") else 1.5 for sg in p_sig2]),
+            pattern=dict(
+                shape=["" if sg in ("*","**","***") else "/" for sg in p_sig2],
+                fgcolor=["rgba(0,0,0,0)" if sg in ("*","**","***") else "rgba(0,69,184,0.65)"
+                         for sg in p_sig2],
+                size=6, solidity=0.45),
+            cornerradius=3),
         customdata=[_hover(v,sg) for v,sg in zip(p_r2,p_sig2)],
         hovertemplate="<b>%{x}</b> — 7-day Rainfall<br>%{customdata}<extra></extra>",
     ))
+
+    # 14-day Freeze-Thaw Count — red/coral
     fig.add_trace(go.Bar(
         name="14-day Freeze-Thaw Count",
         x=regions_ordered, y=f_r2,
-        marker=dict(color=["rgba(255,77,109,{})".format(_opacity(sg)) for sg in f_sig2],
-                    line=dict(width=0), cornerradius=4),
+        marker=dict(
+            color=["rgba(211,7,49,1.0)" if sg in ("*","**","***") else "rgba(211,7,49,0.12)"
+                   for sg in f_sig2],
+            line=dict(
+                color=["#D30731" if sg in ("*","**","***") else "rgba(130,140,160,0.55)"
+                       for sg in f_sig2],
+                width=[0 if sg in ("*","**","***") else 1.5 for sg in f_sig2]),
+            pattern=dict(
+                shape=["" if sg in ("*","**","***") else "/" for sg in f_sig2],
+                fgcolor=["rgba(0,0,0,0)" if sg in ("*","**","***") else "rgba(211,7,49,0.55)"
+                         for sg in f_sig2],
+                size=6, solidity=0.45),
+            cornerradius=3),
         customdata=[_hover(v,sg) for v,sg in zip(f_r2,f_sig2)],
         hovertemplate="<b>%{x}</b> — 14-day Freeze-Thaw<br>%{customdata}<extra></extra>",
     ))
+
+    # 14-day Heating Degree Days — amber/orange
     fig.add_trace(go.Bar(
         name="14-day Heating Degree Days",
         x=regions_ordered, y=h_r2,
-        marker=dict(color=["rgba(251,146,60,{})".format(_opacity(sg)) for sg in h_sig2],
-                    line=dict(width=0), cornerradius=4),
+        marker=dict(
+            color=["rgba(160,120,0,1.0)" if sg in ("*","**","***") else "rgba(160,120,0,0.12)"
+                   for sg in h_sig2],
+            line=dict(
+                color=["#A07800" if sg in ("*","**","***") else "rgba(130,140,160,0.55)"
+                       for sg in h_sig2],
+                width=[0 if sg in ("*","**","***") else 1.5 for sg in h_sig2]),
+            pattern=dict(
+                shape=["" if sg in ("*","**","***") else "/" for sg in h_sig2],
+                fgcolor=["rgba(0,0,0,0)" if sg in ("*","**","***") else "rgba(160,120,0,0.55)"
+                         for sg in h_sig2],
+                size=6, solidity=0.45),
+            cornerradius=3),
         customdata=[_hover(v,sg) for v,sg in zip(h_r2,h_sig2)],
         hovertemplate="<b>%{x}</b> — Heating Degree Days<br>%{customdata}<extra></extra>",
     ))
-    fig.add_hline(y=0, line_color="rgba(150,160,190,0.55)", line_width=1.5)
+    fig.add_hline(y=0, line_color="rgba(100,116,139,0.7)", line_width=1.5)
     fig.add_hrect(y0=-0.05, y1=0.05, fillcolor="rgba(100,110,140,0.04)", line_width=0)
-    fig.add_annotation(x="Halifax / Lunenburg", y=-0.155,
+
+    # Annotations placed safely outside bar range
+    fig.add_annotation(x="Halifax / Lunenburg", y=-0.185,
         text="Priority region — strongest freeze-thaw signal",
         showarrow=False, xanchor="center",
-        font=dict(family="DM Sans", size=11, color="#FF4D6D"))
-    fig.add_annotation(x="Annapolis Valley", y=0.118,
+        font=dict(family="Roboto", size=11, color="#D30731"))
+    fig.add_annotation(x="Central NS", y=0.145,
         text="Rain-driven regions",
         showarrow=False, xanchor="center",
-        font=dict(family="DM Sans", size=11, color="#06B6D4"))
-    fig = pset(fig, h=480, l=60, r=30, t=72, b=64)
+        font=dict(family="Roboto", size=11, color="#0045B8"))
+
+    fig = pset(fig, h=520, l=60, r=30, t=110, b=70)
     fig.update_layout(
         title=dict(
-            text=(
-                "Which weather variable best predicts potholes — by region?<br>"
-                "<sup>Solid bar = statistically significant  "
-                "·  Faded = no significant relationship  "
-                "·  Hover for exact values</sup>"
-            ),
-            font=dict(family="DM Sans", size=13.5, color=G["tick"])),
-        barmode="group", bargap=0.20, bargroupgap=0.05,
-        legend=dict(orientation="h", y=1.13, x=0,
-                    font=dict(size=12, color=G["tick"]), bgcolor="rgba(0,0,0,0)"),
+            text="Which weather variable best predicts potholes — by region?",
+            font=dict(family="Roboto", size=14, color=G["tick"]),
+            y=0.97, x=0, xanchor="left"),
+        barmode="group", bargap=0.22, bargroupgap=0.06,
+        legend=dict(
+            orientation="h",
+            y=-0.18,
+            x=0.5,
+            xanchor="center",
+            font=dict(size=12, color=G["tick"]),
+            bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(tickfont=dict(size=13, color=G["tick"]), tickangle=0),
-        yaxis=dict(title="Correlation strength (Spearman r)",
-                   range=[-0.195, 0.155], tickformat=".2f", zeroline=False))
+        yaxis=dict(
+            title="Correlation strength (Spearman r)",
+            range=[-0.215, 0.165],
+            tickformat=".2f",
+            zeroline=False))
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown(
-        '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;'
+        '<p style="font-size:12.5px;color:var(--sub);margin:6px 0 10px;font-weight:400">'
+        'Solid bar = statistically significant (p &lt; 0.05) &nbsp;·&nbsp; '
+        'Hatched bar = not statistically significant &nbsp;·&nbsp; '
+        'Hover any bar for the exact r value and p-value</p>',
+        unsafe_allow_html=True)
+    st.markdown(
+        '<div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap;'
         'background:var(--surface2);border:1px solid var(--border);'
-        'border-radius:10px;padding:12px 20px">'
-        '<div style="display:flex;align-items:center;gap:8px">'
-        '<div style="width:18px;height:12px;border-radius:3px;background:#06B6D4"></div>'
-        '<span style="font-size:12.5px;color:var(--sub)">7-day Rainfall</span></div>'
-        '<div style="display:flex;align-items:center;gap:8px">'
-        '<div style="width:18px;height:12px;border-radius:3px;background:#FF4D6D"></div>'
-        '<span style="font-size:12.5px;color:var(--sub)">14-day Freeze-Thaw Count</span></div>'
-        '<div style="display:flex;align-items:center;gap:8px">'
-        '<div style="width:18px;height:12px;border-radius:3px;background:#FB923C"></div>'
-        '<span style="font-size:12.5px;color:var(--sub)">14-day Heating Degree Days</span></div>'
-        '<div style="display:flex;align-items:center;gap:8px;margin-left:auto">'
-        '<div style="width:14px;height:12px;border-radius:2px;'
-        'background:rgba(150,160,180,0.95)"></div>'
-        '<span style="font-size:12.5px;color:var(--sub)">Solid = significant</span>'
-        '<div style="width:14px;height:12px;border-radius:2px;'
-        'background:rgba(150,160,180,0.2);margin-left:8px"></div>'
-        '<span style="font-size:12.5px;color:var(--sub)">Faded = not significant</span>'
+        'border-radius:10px;padding:14px 20px">'
+
+        '<div style="display:flex;align-items:center;gap:10px">'
+        '<div style="width:20px;height:14px;border-radius:3px;background:#0045B8"></div>'
+        '<span style="font-size:13px;color:var(--sub)">7-day Rainfall</span></div>'
+
+        '<div style="display:flex;align-items:center;gap:10px">'
+        '<div style="width:20px;height:14px;border-radius:3px;background:#D30731"></div>'
+        '<span style="font-size:13px;color:var(--sub)">14-day Freeze-Thaw Count</span></div>'
+
+        '<div style="display:flex;align-items:center;gap:10px">'
+        '<div style="width:20px;height:14px;border-radius:3px;background:#A07800"></div>'
+        '<span style="font-size:13px;color:var(--sub)">14-day Heating Degree Days</span></div>'
+
+        '<div style="display:flex;align-items:center;gap:28px;margin-left:auto">'
+
+        '<div style="display:flex;align-items:center;gap:10px">'
+        '<div style="width:20px;height:14px;border-radius:3px;background:#0045B8"></div>'
+        '<span style="font-size:13px;color:var(--sub)">Solid = significant</span></div>'
+
+        '<div style="display:flex;align-items:center;gap:10px">'
+        '<div style="width:20px;height:14px;border-radius:3px;border:1.5px solid rgba(130,140,160,0.6);'
+        'background:repeating-linear-gradient(45deg,rgba(8,145,178,0.35) 0px,'
+        'rgba(8,145,178,0.35) 2px,rgba(255,255,255,0.7) 2px,rgba(255,255,255,0.7) 6px)">'
+        '</div>'
+        '<span style="font-size:13px;color:var(--sub)">Hatched = not significant</span></div>'
+
         '</div></div>',
         unsafe_allow_html=True)
 
@@ -926,9 +1047,9 @@ elif S == 6:
             f'<div style="background:{bg};border:1px solid {bdr};border-left:3px solid {acc};'
             f'border-radius:10px;padding:16px 15px">'
             f'<p style="font-size:13px;font-weight:600;color:{acc};margin:0 0 5px">{rtitle}</p>'
-            f'<p style="font-family:DM Mono,monospace;font-size:10.5px;color:var(--text);'
+            f'<p style="font-family:DM Mono,monospace;font-size:12px;color:var(--text);'
             f'margin:0 0 10px;font-weight:500">{stat}</p>'
-            f'<p style="font-size:12px;color:var(--sub);line-height:1.7;font-weight:300;margin:0">{body}</p>'
+            f'<p style="font-size:12px;color:var(--sub);line-height:1.7;font-weight:400;margin:0">{body}</p>'
             f'</div>', unsafe_allow_html=True)
 
 
@@ -937,91 +1058,158 @@ elif S == 6:
 # ══════════════════════════════════════════════════════════════════════════════
 elif S == 7:
     slide_header("07", "Five weather variables independently predict daily complaint counts.",
-                 "OLS regression model  ·  weekdays only 2019-2025  ·  R2 = 7.2%  "
-                 "·  Red bar = statistically significant  ·  Grey = not significant")
+                 "OLS regression  ·  weekdays only 2019–2025  ·  R² = 7.2%")
 
     predictors = [
-        ("7-day Rain",                -0.02, False, "Not significant — absorbed by Precipitation"),
-        ("7-day Total Precipitation",  0.05, False, "Not significant — collinear with Rain"),
-        ("14-day Heating Degree Days", -0.02, True,  "Colder recent weeks = fewer same-day calls"),
-        ("Precip x Freeze-Thaw (7d)",  0.11, True,  "Wet road + freeze = extra damage"),
-        ("7-day Snowfall",              0.23, True,  "+0.23 extra calls per cm of snow"),
-        ("14-day Freeze-Thaw Count",   -0.67, True,  "Active freeze suppresses same-day calls (surge arrives 5 days later)"),
-        ("Spring Season (Mar-May)",     4.59, True,  "+4.6 extra calls/day just for being in spring"),
+        ("7-day Rain",                -0.02, False, "Not significant"),
+        ("7-day Total Precipitation",  0.05, False, "Not significant"),
+        ("14-day Heating Degree Days", -0.02, True,  "Colder weeks = fewer same-day calls"),
+        ("Precip × Freeze-Thaw (7d)",  0.11, True,  "Wet road + freeze = extra damage"),
+        ("7-day Snowfall",              0.23, True,  "+0.23 calls per cm of snow"),
+        ("14-day Freeze-Thaw Count",   -0.67, True,  "Active freeze suppresses same-day calls"),
+        ("Spring Season (Mar–May)",     4.59, True,  "+4.6 extra calls/day in spring"),
     ]
     ci    = [0.07, 0.09, 0.008, 0.04, 0.09, 0.08, 0.60]
     names = [p[0] for p in predictors]
     vals  = [p[1] for p in predictors]
     sigs  = [p[2] for p in predictors]
     descs = [p[3] for p in predictors]
-    bar_c = ["#FF4D6D" if sg else "rgba(148,163,184,0.28)" for sg in sigs]
 
-    fig = go.Figure()
-    fig.add_vline(x=0, line_color="rgba(150,160,190,0.55)", line_width=2)
-    fig.add_trace(go.Bar(
-        x=vals, y=names, orientation="h",
-        marker=dict(color=bar_c, line=dict(width=0), cornerradius=5),
-        error_x=dict(type="data", array=ci,
-                     color="rgba(150,160,190,0.55)", thickness=2, width=8),
-        customdata=descs,
-        hovertemplate="<b>%{y}</b><br>Effect = %{x:+.2f} complaints/day<br>%{customdata}<extra></extra>",
-        showlegend=False,
-    ))
-    for i, (name, val, sg) in enumerate(zip(names, vals, sigs)):
-        xpos = val + ci[i] + 0.12 if val >= 0 else val - ci[i] - 0.12
-        anchor = "left" if val >= 0 else "right"
+    chart_col, table_col = st.columns([1.5, 1], gap="large")
+
+    with chart_col:
+        fig = go.Figure()
+        # Zero line — NS navy
+        fig.add_vline(x=0, line_color="#002366", line_width=1.8)
+        # Light gold band for the spring bar
+        fig.add_hrect(
+            y0="Spring Season (Mar–May)", y1="Spring Season (Mar–May)",
+            fillcolor="rgba(196,154,0,0.08)", line_width=0)
+
+        # Bars — NS red for significant, light grey for not
+        bar_colors = ["#D30731" if sg else "rgba(100,116,139,0.3)" for sg in sigs]
+        fig.add_trace(go.Bar(
+            x=vals, y=names, orientation="h",
+            marker=dict(color=bar_colors, line=dict(width=0), cornerradius=4),
+            error_x=dict(type="data", array=ci,
+                         color="rgba(0,35,102,0.4)", thickness=2, width=7),
+            customdata=[f"{d}" for d in descs],
+            hovertemplate="<b>%{y}</b><br>+%{x:.2f} complaints/day<br>%{customdata}<extra></extra>",
+            showlegend=False,
+        ))
+
+        # Value labels — clean, right of bar
+        for i, (name, val, sg) in enumerate(zip(names, vals, sigs)):
+            xpos = val + ci[i] + 0.10 if val >= 0 else val - ci[i] - 0.10
+            anchor = "left" if val >= 0 else "right"
+            fig.add_annotation(
+                x=xpos, y=name,
+                text=f"<b>{val:+.2f}</b>",
+                showarrow=False, xanchor=anchor,
+                font=dict(family="Roboto Mono", size=12,
+                          color="#D30731" if sg else "rgba(100,116,139,0.6)"))
+
+        # Spring callout — NS branded
         fig.add_annotation(
-            x=xpos, y=name,
-            text=("{:+.2f}".format(val)),
-            showarrow=False, xanchor=anchor,
-            font=dict(family="DM Mono", size=12.5,
-                      color="#FF4D6D" if sg else "rgba(148,163,184,0.65)"))
-    fig.add_annotation(
-        x=4.59, y="Spring Season (Mar-May)",
-        text="Biggest driver in the model",
-        showarrow=True, arrowhead=2, arrowcolor="#FF4D6D",
-        ax=-8, ay=-46, xanchor="right",
-        font=dict(family="DM Sans", size=11.5, color="#FF4D6D"),
-        bgcolor="rgba(15,15,30,0.90)", bordercolor="#FF4D6D",
-        borderwidth=1.5, borderpad=8)
-    fig = pset(fig, h=400, l=230, r=110, t=52, b=56)
-    fig.update_layout(
-        title=dict(
-            text="Effect of each weather variable on daily pothole complaints  "
-                 "·  Hover a bar for plain-English explanation",
-            font=dict(family="DM Sans", size=13.5, color=G["tick"])),
-        showlegend=False,
-        xaxis=dict(
-            title="Extra complaints per day  (holding other variables constant)",
-            range=[-1.3, 6.8], tickformat=".1f"),
-        yaxis=dict(tickfont=dict(size=12.5, color=G["tick"])))
-    st.plotly_chart(fig, use_container_width=True)
+            x=4.59, y="Spring Season (Mar–May)",
+            text="Largest effect in the model",
+            showarrow=True, arrowhead=2, arrowcolor="#002366",
+            ax=-10, ay=-40, xanchor="right",
+            font=dict(family="Roboto Condensed", size=12, color="#FFFFFF"),
+            bgcolor="#002366", bordercolor="#002366",
+            borderwidth=0, borderpad=8)
+
+        fig = pset(fig, h=400, l=230, r=90, t=44, b=52)
+        fig.update_layout(
+            title=dict(
+                text="Extra complaints per day — each variable's effect",
+                font=dict(family="Roboto Condensed", size=14, color="#002366")),
+            showlegend=False,
+            xaxis=dict(
+                title="Extra complaints per day  (all other variables held constant)",
+                range=[-1.2, 6.5], tickformat=".1f",
+                title_font=dict(size=12, color="#1A3568"),
+                tickfont=dict(size=11.5, color="#1A3568")),
+            yaxis=dict(tickfont=dict(size=12.5, color="#0D1B3E")))
+        st.plotly_chart(fig, use_container_width=True)
+
+    with table_col:
+        # Clean NS government-style summary table
+        st.markdown(
+            '<p style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
+            'font-weight:700;letter-spacing:2px;text-transform:uppercase;'
+            'color:#4A6490;margin:0 0 12px">Coefficient Summary</p>',
+            unsafe_allow_html=True)
+
+        rows_html = ""
+        for name, val, sg, desc in predictors:
+            sig_badge = (
+                f'<span style="background:#D30731;color:#fff;font-size:10px;'
+                f'font-weight:700;padding:2px 7px;border-radius:3px;'
+                f'font-family:Roboto Condensed,sans-serif">significant</span>'
+                if sg else
+                f'<span style="background:#E5E9F0;color:#64748B;font-size:10px;'
+                f'padding:2px 7px;border-radius:3px;'
+                f'font-family:Roboto Condensed,sans-serif">not sig.</span>'
+            )
+            rows_html += (
+                f'<tr style="border-bottom:1px solid #E8EDF5">'
+                f'<td style="padding:10px 10px 10px 0;font-size:12.5px;'
+                f'font-weight:{"600" if sg else "400"};color:{"#0D1B3E" if sg else "#64748B"}">'
+                f'{name}</td>'
+                f'<td style="font-family:Roboto Mono,monospace;font-size:13px;'
+                f'color:{"#D30731" if sg else "#94A3B8"};text-align:right;'
+                f'padding:10px 8px;font-weight:{"700" if sg else "400"}">'
+                f'{val:+.2f}</td>'
+                f'<td style="text-align:right;padding:10px 0 10px 4px">'
+                f'{sig_badge}</td>'
+                f'</tr>'
+            )
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #D0D9E8;'
+            f'border-top:3px solid #0045B8;border-radius:6px;padding:16px 18px">'
+            f'<table style="width:100%;border-collapse:collapse">'
+            f'<tr style="border-bottom:2px solid #0045B8">'
+            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
+            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
+            f'padding:0 10px 8px 0;text-align:left">Variable</th>'
+            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
+            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
+            f'padding:0 8px 8px;text-align:right">Effect</th>'
+            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
+            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
+            f'padding:0 0 8px;text-align:right">Status</th></tr>'
+            f'{rows_html}'
+            f'</table>'
+            f'<p style="font-size:11px;color:#64748B;margin:12px 0 0;font-style:italic">'
+            f'R² = 0.072 — weather explains 7.2% of daily variance</p>'
+            f'</div>',
+            unsafe_allow_html=True)
 
     divider()
-    r1, r2, r3 = st.columns(3, gap="large")
-    for col, acc, rtitle, body in [
-        (r1, "var(--red)",
+    r1, r2, r3 = st.columns(3, gap="medium")
+    for col, border_c, bg_c, rtitle, body in [
+        (r1, "#D30731", "rgba(211,7,49,0.05)",
          "Spring dominates everything",
-         "Just being in March-May adds +4.6 complaints per day, all else equal. "
-         "All winter damage becomes visible simultaneously — "
-         "it is by far the single biggest predictor in the model."),
-        (r2, "var(--amber)",
-         "Why does Freeze-Thaw have a negative sign?",
-         "During heavy freeze periods, potholes form but stay hidden under snow. "
+         "Just being in March–May adds +4.6 complaints per day. All winter damage "
+         "becomes visible simultaneously — the single biggest predictor in the model."),
+        (r2, "#C49A00", "rgba(196,154,0,0.06)",
+         "Why does Freeze-Thaw show negative?",
+         "During freezing, potholes form but stay hidden under snow. "
          "Calls drop temporarily. The surge arrives 5 days later — "
-         "this is the lag effect, not an inverse relationship."),
-        (r3, "var(--green)",
-         "Why R2 = 7.2% is acceptable",
-         "Weather explains 7.2% of daily variance. Road age, traffic, and pavement condition "
-         "explain most of the rest — but those data are not yet in this model. "
-         "7.2% is sufficient to build a reliable alert trigger."),
+         "this is the lag effect, not a true inverse."),
+        (r3, "#0045B8", "rgba(0,69,184,0.05)",
+         "Why R² = 7.2% is acceptable",
+         "Road age, traffic volume, and pavement condition explain most of the rest. "
+         "Those data are not yet in the model. "
+         "7.2% from weather alone is sufficient for an operational alert trigger."),
     ]:
-        bg, bdr = ACC.get(acc, ("var(--surface2)", "var(--border)"))
         col.markdown(
-            f'<div style="background:{bg};border:1px solid {bdr};border-left:3px solid {acc};'
-            f'border-radius:10px;padding:16px 15px">'
-            f'<p style="font-size:13px;font-weight:600;color:{acc};margin:0 0 8px">{rtitle}</p>'
-            f'<p style="font-size:12.5px;color:var(--sub);line-height:1.7;font-weight:300;margin:0">{body}</p>'
+            f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.12);'
+            f'border-left:4px solid {border_c};border-radius:6px;padding:16px 15px">'
+            f'<p style="font-family:Roboto Condensed,sans-serif;font-size:13px;'
+            f'font-weight:700;color:{border_c};margin:0 0 8px">{rtitle}</p>'
+            f'<p style="font-size:12.5px;color:#3A4E72;line-height:1.7;font-weight:400;margin:0">{body}</p>'
             f'</div>', unsafe_allow_html=True)
 
 
@@ -1056,7 +1244,7 @@ elif S == 8:
                 f'color:{color};line-height:1;flex-shrink:0;width:28px;padding-top:2px">{num}</div>'
                 f'<div>'
                 f'<p style="font-size:14px;font-weight:600;color:var(--text);margin:0 0 5px">{title}</p>'
-                f'<p style="font-size:13px;color:var(--sub);line-height:1.75;font-weight:300">{body}</p>'
+                f'<p style="font-size:13px;color:var(--sub);line-height:1.75;font-weight:400">{body}</p>'
                 f'</div></div>')
         st.markdown(
             f'<div style="background:var(--surface);border:1px solid var(--border);'
@@ -1079,7 +1267,7 @@ elif S == 8:
                 f'<div style="background:{bg};border:1px solid {bdr};border-left:3px solid {acc};'
                 f'border-radius:10px;padding:15px 17px;margin-bottom:10px">'
                 f'<p style="font-size:12px;font-weight:600;color:{acc};margin:0 0 6px">{title}</p>'
-                f'<p style="font-size:13px;color:var(--text2);line-height:1.72;font-weight:300">{body}</p>'
+                f'<p style="font-size:13px;color:var(--text2);line-height:1.72;font-weight:400">{body}</p>'
                 f'</div>', unsafe_allow_html=True)
 
     divider()
@@ -1144,12 +1332,12 @@ elif S == 8:
 # --blue-bdr: rgba(29,78,216,0.2);
 
 # --amber: #B45309;
-# --amber-v: #D97706;
+# --amber-v: #B8930A;
 # --amber-bg: rgba(180,83,9,0.07);
 # --amber-bdr: rgba(180,83,9,0.2);
 
 # --green: #15803D;
-# --green-v: #16A34A;
+# --green-v: #15803D;
 # --green-bg: rgba(21,128,61,0.07);
 # --green-bdr: rgba(21,128,61,0.2);
 
@@ -1309,18 +1497,18 @@ elif S == 8:
 # # Brand block
 # st.markdown(
 # '<div style="padding:32px 24px 24px;border-bottom:1px solid var(--sb-line)">'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:500;'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11.5px;font-weight:500;'
 # 'color:var(--sb-dot);letter-spacing:3.5px;margin:0 0 8px">NS · POTHOLE</p>'
 # '<p style="font-family:\'Instrument Serif\',serif;font-size:16px;'
 # 'color:var(--sb-txt);margin:0 0 4px;font-style:italic;line-height:1.3">'
 # 'Freeze-Thaw Analysis</p>'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--sb-sub);'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11.5px;color:var(--sb-sub);'
 # 'margin:0;letter-spacing:.5px">2019 – 2025</p>'
 # '</div>',
 # unsafe_allow_html=True)
 
 # st.markdown(
-# '<p style="font-family:\'DM Mono\',monospace;font-size:8.5px;letter-spacing:2.5px;'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2.5px;'
 # 'text-transform:uppercase;color:var(--sb-faint);padding:20px 24px 6px;'
 # 'border-bottom:none">Navigation</p>',
 # unsafe_allow_html=True)
@@ -1348,7 +1536,7 @@ elif S == 8:
 # f'padding:20px 24px;border-top:1px solid var(--sb-line)">'
 # f'<div style="display:flex;justify-content:space-between;align-items:center;'
 # f'margin-bottom:6px">'
-# f'<span style="font-family:\'DM Mono\',monospace;font-size:9px;'
+# f'<span style="font-family:\'DM Mono\',monospace;font-size:11px;'
 # f'color:var(--sb-faint);letter-spacing:.5px">{NUMS[S]}&nbsp;of&nbsp;{NUMS[-1]}</span>'
 # f'<div style="display:flex;gap:4px">'
 # + "".join(
@@ -1358,8 +1546,8 @@ elif S == 8:
 # for j in range(len(SLIDES))
 # )
 # + f'</div></div>'
-# f'<p style="font-size:9.5px;color:var(--sb-faint);font-weight:300">'
-# f'MBAN 2026 · NS TIR + ECCC</p>'
+# f'<p style="font-size:11.5px;color:var(--sb-faint);font-weight:400">'
+# f'MBAN 2026 · Nova Scotia TIR + ECCC</p>'
 # f'</div>',
 # unsafe_allow_html=True)
 
@@ -1428,7 +1616,7 @@ elif S == 8:
 # f'letter-spacing:-0.3px">{title}</h1>'
 # f'</div>'
 # + (f'<p style="font-size:14px;color:var(--sub);line-height:1.8;max-width:820px;'
-# f'font-weight:300">{sub}</p>' if sub else "")
+# f'font-weight:400">{sub}</p>' if sub else "")
 # + '</div>', unsafe_allow_html=True)
 
 
@@ -1440,7 +1628,7 @@ elif S == 8:
 # f'<p style="font-size:12px;font-weight:600;color:{accent};margin:0 0 7px;'
 # f'letter-spacing:.03em">{title}</p>'
 # f'<p style="font-size:13px;color:var(--text2);line-height:1.75;margin:0;'
-# f'font-weight:300">{body}</p>'
+# f'font-weight:400">{body}</p>'
 # f'</div>', unsafe_allow_html=True)
 
 
@@ -1449,11 +1637,11 @@ elif S == 8:
 # st.markdown(
 # f'<div style="background:var(--surface);border:1px solid {bc};'
 # f'border-radius:12px;padding:22px 16px;text-align:center">'
-# f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:500;'
+# f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;'
 # f'color:var(--faint);text-transform:uppercase;letter-spacing:2.5px;margin:0 0 11px">{label}</p>'
 # f'<p style="font-family:\'Instrument Serif\',serif;font-size:clamp(1.5rem,2.8vw,1.9rem);'
 # f'font-style:italic;color:{color};line-height:1;margin:0 0 7px">{value}</p>'
-# + (f'<p style="font-size:11px;color:var(--faint);margin:0;font-weight:300">{sub}</p>' if sub else "")
+# + (f'<p style="font-size:11.5px;color:var(--sub);margin:0;font-weight:400">{sub}</p>' if sub else "")
 # + '</div>', unsafe_allow_html=True)
 
 
@@ -1463,7 +1651,7 @@ elif S == 8:
 
 # def label(text):
 # st.markdown(
-# f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:500;'
+# f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;'
 # f'color:var(--faint);text-transform:uppercase;letter-spacing:2.5px;margin:0 0 16px">{text}</p>',
 # unsafe_allow_html=True)
 
@@ -1474,8 +1662,8 @@ elif S == 8:
 # # Hero headline
 # st.markdown(
 # '<div style="padding:8px 0 36px">'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:500;'
-# 'letter-spacing:3.5px;color:var(--red);margin:0 0 20px">NOVA SCOTIA TIR + ECCC · 2019–2025</p>'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11.5px;font-weight:500;'
+# 'letter-spacing:2.5px;color:#0045B8;margin:0 0 20px">NOVA SCOTIA · TIR + ECCC · 2019–2025</p>'
 # '<h1 style="font-family:\'Instrument Serif\',serif;'
 # 'font-size:clamp(2.2rem,5vw,3.6rem);font-weight:400;font-style:italic;'
 # 'color:var(--text);line-height:1.08;letter-spacing:-1px;margin:0 0 18px">'
@@ -1483,12 +1671,12 @@ elif S == 8:
 # '<span style="color:var(--red)">before</span> they appear?'
 # '</h1>'
 # '<p style="font-size:15px;color:var(--sub);line-height:1.85;max-width:620px;'
-# 'font-weight:300;margin:0 0 30px">'
+# 'font-weight:400;margin:0 0 30px">'
 # 'A 6-year analysis of <strong style="color:var(--text);font-weight:500">391,795 service '
 # 'records</strong> and daily weather from 5 ECCC stations reveals a consistent '
 # '<strong style="color:var(--red);font-weight:500">5-day window</strong> between '
 # 'freeze-thaw events and pothole complaint surges.</p>'
-# '<div style="width:32px;height:2px;background:var(--red);border-radius:1px"></div>'
+# '<div style="width:48px;height:3px;background:#FDD54E;border-radius:2px;margin-top:4px"></div>'
 # '</div>', unsafe_allow_html=True)
 
 # # KPI row
@@ -1547,7 +1735,7 @@ elif S == 8:
 # x=years, y=vals,
 # marker=dict(color=clrs, line=dict(width=0), cornerradius=5),
 # text=[f"{v:,}" for v in vals], textposition="outside",
-# textfont=dict(family="DM Mono", size=11, color=G["tick"]),
+# textfont=dict(family="Roboto Mono", size=11, color=G["tick"]),
 # hovertemplate="<b>%{x}</b> — %{y:,} complaints<extra></extra>",
 # ))
 # for yr, lbl in [("2022","Severe FT season"),("2025","Active FT season")]:
@@ -1606,7 +1794,7 @@ elif S == 8:
 # f'<p style="font-family:\'DM Mono\',monospace;font-size:1.15rem;font-weight:500;'
 # f'color:{color};margin-bottom:12px">{num}</p>'
 # f'<p style="font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:8px">{title}</p>'
-# f'<p style="font-size:11.5px;color:var(--sub);line-height:1.65;font-weight:300">{desc}</p>'
+# f'<p style="font-size:11.5px;color:var(--sub);line-height:1.65;font-weight:400">{desc}</p>'
 # f'</div>', unsafe_allow_html=True)
 
 # divider()
@@ -1628,7 +1816,7 @@ elif S == 8:
 # st.markdown(
 # '<div style="background:var(--surface);border:1px solid var(--border);'
 # 'border-radius:12px;padding:24px">'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:2.5px;'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2.5px;'
 # 'color:var(--faint);text-transform:uppercase;margin-bottom:18px">Key Formulas</p>'
 # '<div style="background:var(--red-bg);border:1px solid var(--red-bdr);'
 # 'border-radius:8px;padding:18px 20px;margin-bottom:18px">'
@@ -1639,7 +1827,7 @@ elif S == 8:
 # '&nbsp;&nbsp;AND Tmin(t) &lt; 0°C<br><br>'
 # 'FTC_14d(t) = Σ FT_day(t−14 … t−1)</code>'
 # '</div>'
-# '<p style="font-size:13px;color:var(--sub);line-height:1.8;font-weight:300">'
+# '<p style="font-size:13px;color:var(--sub);line-height:1.8;font-weight:400">'
 # 'The window is shifted one day forward to prevent data leakage. Only weather '
 # 'information available <em>before</em> the complaint date is used as a predictor.</p>'
 # '</div>',
@@ -1671,25 +1859,25 @@ elif S == 8:
 # marker=dict(size=[14 if m=="Jul" else 6 for m in months],
 # color=[C["red"] if m=="Jul" else "rgba(239,68,68,0.5)" for m in months],
 # line=dict(color="rgba(0,0,0,0.15)", width=1.5)),
-# fill="tozeroy", fillcolor="rgba(239,68,68,0.045)",
+# fill="tozeroy", fillcolor="rgba(211,7,49,0.06)",
 # hovertemplate="<b>%{x}</b> %{y:.1f} complaints/day<extra></extra>"), secondary_y=True)
 # fig.add_annotation(x="Jul", y=18.3, text="Peak 18.3 / day",
 # showarrow=False, yshift=22, yref="y2",
-# font=dict(family="DM Mono", size=10.5, color=C["red"]))
+# font=dict(family="Roboto Mono", size=10.5, color=C["red"]))
 # fig.add_annotation(x="Mar", y=150, text="Peak FT month",
 # showarrow=False, yshift=22, yref="y",
-# font=dict(family="DM Mono", size=10.5, color=C["blue"]))
+# font=dict(family="Roboto Mono", size=10.5, color=C["blue"]))
 # fig = pset(fig, h=400, l=60, r=68, t=44, b=48)
 # fig.update_layout(
 # title=dict(text="Monthly Freeze-Thaw Days · vs Avg Daily Pothole Complaints",
 # font=dict(family="Sora", size=13.5, color=G["tick"])),
 # bargap=0.18)
 # fig.update_yaxes(title="Freeze-Thaw Days", secondary_y=False,
-# title_font=dict(color="rgba(59,130,246,0.88)"),
-# tickfont=dict(color="rgba(59,130,246,0.65)"))
+# title_font=dict(color="#1D4ED8"),
+# tickfont=dict(color="#1D4ED8"))
 # fig.update_yaxes(title="Avg Potholes / Day", secondary_y=True,
-# title_font=dict(color="rgba(239,68,68,0.88)"),
-# tickfont=dict(color="rgba(239,68,68,0.65)"))
+# title_font=dict(color="#B91C1C"),
+# tickfont=dict(color="#B91C1C"))
 # st.plotly_chart(fig, use_container_width=True)
 
 # c1, c2, c3 = st.columns(3, gap="large")
@@ -1729,7 +1917,7 @@ elif S == 8:
 # fig.add_vrect(x0=4.5, x1=7.5, fillcolor="rgba(245,158,11,0.06)",
 # line=dict(color="rgba(245,158,11,0.45)", width=1, dash="dash"),
 # annotation_text="5–7 Day window", annotation_position="top",
-# annotation_font=dict(family="DM Mono", size=10, color=C["amber"]))
+# annotation_font=dict(family="Roboto Mono", size=10, color=C["amber"]))
 # fig.add_hline(y=0, line_color=G["zero"], line_width=1.2)
 # fig.add_trace(go.Scatter(
 # x=lags, y=ftc_r, name="Freeze-Thaw Count (FTC)",
@@ -1808,7 +1996,7 @@ elif S == 8:
 # ("Precip 3-day", 0.0451, "rgba(59,130,246,0.62)"),
 # ("Rain 7-day", 0.0489, "rgba(59,130,246,0.72)"),
 # ("Rain 5-day", 0.0496, "rgba(59,130,246,0.82)"),
-# ("Precip 14-day", 0.0534, "rgba(59,130,246,0.88)"),
+# ("Precip 14-day", 0.0534, "#1D4ED8"),
 # ("Precip 5-day", 0.0727, "rgba(59,130,246,0.94)"),
 # ("Precip 7-day", 0.0734, C["blue"], True),
 # ]
@@ -1818,16 +2006,16 @@ elif S == 8:
 # marker=dict(color=[f[2] for f in features], line=dict(width=0), cornerradius=3),
 # text=[f"{f[1]:+.4f}" for f in features],
 # textposition="outside",
-# textfont=dict(family="DM Mono", size=10.5, color=G["tick"]),
+# textfont=dict(family="Roboto Mono", size=10.5, color=G["tick"]),
 # hovertemplate="<b>%{y}</b> r = %{x:.4f}<extra></extra>"))
 # fig.add_vline(x=0, line_color=G["zero"], line_width=1.5)
 # # Quadrant labels
 # fig.add_annotation(x=-0.05, y=14.7, text="← Freeze-season suppression",
 # showarrow=False, xanchor="right",
-# font=dict(family="DM Mono", size=9, color="rgba(239,68,68,0.6)"))
+# font=dict(family="Roboto Mono", size=9, color="#B91C1C"))
 # fig.add_annotation(x=0.05, y=14.7, text="Rain-driven surge →",
 # showarrow=False, xanchor="left",
-# font=dict(family="DM Mono", size=9, color="rgba(59,130,246,0.6)"))
+# font=dict(family="Roboto Mono", size=9, color="#1D4ED8"))
 # fig = pset(fig, h=530, l=142, r=86, t=44, b=46)
 # fig.update_layout(
 # title=dict(text="Spearman r · Rolling Weather Features vs Daily Pothole Complaints",
@@ -1891,18 +2079,18 @@ elif S == 8:
 # f'white-space:pre-line;line-height:1.4;letter-spacing:0.01em">{name}</p>'
 # f'<p style="font-family:\'Instrument Serif\',serif;font-size:1.55rem;font-style:italic;'
 # f'color:{acc};margin:0 0 2px;letter-spacing:-0.3px">{n:,}</p>'
-# f'<p style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--faint);'
-# f'text-transform:uppercase;letter-spacing:1.5px;margin:0 0 14px">potholes</p>'
+# f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--faint);'
+# f'text-transform:uppercase;letter-spacing:1px;font-size:11px;margin:0 0 14px">Potholes</p>'
 # f'<div style="border-top:1px solid var(--border);padding-top:12px">'
 # f'<p style="font-family:\'DM Mono\',monospace;font-size:11px;'
 # f'color:var(--sub);margin:0 0 8px">'
 # f'FTC&nbsp;r&nbsp;=&nbsp;<strong style="color:{sc};font-size:12px">{ftc:+.3f}</strong>'
-# f'&nbsp;<span style="color:var(--faint);font-size:9.5px">{fsig}</span></p>'
+# f'&nbsp;<span style="color:{sc};font-size:11.5px;font-weight:600">{fsig}</span></p>'
 # f'<div style="background:var(--surface3);border-radius:3px;height:4px;overflow:hidden">'
 # f'<div style="width:{bar_w}%;height:4px;background:{acc};border-radius:3px;'
 # f'transition:width .6s ease"></div></div>'
-# f'<p style="font-size:9px;color:var(--faint);margin:4px 0 0;font-weight:300">'
-# f'signal strength</p>'
+# f'<p style="font-size:11px;color:var(--faint);margin:4px 0 0;font-weight:400">'
+# f'Signal strength</p>'
 # f'</div></div>', unsafe_allow_html=True)
 
 # divider()
@@ -1913,7 +2101,7 @@ elif S == 8:
 # fig.add_hrect(y0=-0.05, y1=0.05, fillcolor="rgba(100,110,140,0.04)", line_width=0,
 # annotation_text="weak / not significant zone",
 # annotation_position="right",
-# annotation_font=dict(family="DM Mono", size=9, color=G["tick"]))
+# annotation_font=dict(family="Roboto Mono", size=9, color=G["tick"]))
 # for metric, vals, sigs_list, color, sym in [
 # ("7-day Precip r", p_r, p_sig, C["blue"], "circle"),
 # ("14-day FTC r", f_r, f_sig, C["red"], "diamond"),
@@ -1947,7 +2135,7 @@ elif S == 8:
 # ),
 # text=[f"{v:+.3f}{s}" for v, s in zip(ys, ss)],
 # textposition=["top center" if v >= 0 else "bottom center" for v in ys],
-# textfont=dict(family="DM Mono", size=9.5, color=color),
+# textfont=dict(family="Roboto Mono", size=9.5, color=color),
 # hovertemplate="<b>%{x}</b><br>" + metric + " = %{y:+.3f}<extra></extra>",
 # ))
 # fig = pset(fig, h=420, l=52, r=75, t=50, b=50)
@@ -1963,15 +2151,15 @@ elif S == 8:
 # st.markdown(
 # '<div style="background:var(--surface2);border:1px solid var(--border);'
 # 'border-radius:8px;padding:14px 18px">'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:8.5px;letter-spacing:2px;'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:2px;'
 # 'color:var(--faint);text-transform:uppercase;margin-bottom:10px">Chart guide</p>'
 # '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
 # '<div><p style="font-size:12px;font-weight:600;color:var(--text);margin:0 0 3px">Dot size</p>'
-# '<p style="font-size:11.5px;color:var(--sub);font-weight:300">Larger = stronger |r|</p></div>'
+# '<p style="font-size:11.5px;color:var(--sub);font-weight:400">Larger = stronger |r|</p></div>'
 # '<div><p style="font-size:12px;font-weight:600;color:var(--text);margin:0 0 3px">Opacity</p>'
-# '<p style="font-size:11.5px;color:var(--sub);font-weight:300">Bright = significant (p&lt;0.05)</p></div>'
+# '<p style="font-size:11.5px;color:var(--sub);font-weight:400">Bright = significant (p&lt;0.05)</p></div>'
 # '<div><p style="font-size:12px;font-weight:600;color:var(--text);margin:0 0 3px">Direction</p>'
-# '<p style="font-size:11.5px;color:var(--sub);font-weight:300">Above zero = rain-driven; below = freeze-lag suppression</p></div>'
+# '<p style="font-size:11.5px;color:var(--sub);font-weight:400">Above zero = rain-driven; below = freeze-lag suppression</p></div>'
 # '</div></div>', unsafe_allow_html=True)
 
 # with cr:
@@ -1994,7 +2182,7 @@ elif S == 8:
 # st.markdown(
 # '<div style="background:var(--surface);border:1px solid var(--border);'
 # 'border-radius:10px;padding:18px;margin-top:4px">'
-# '<p style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:500;'
+# '<p style="font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;'
 # 'color:var(--faint);text-transform:uppercase;letter-spacing:2px;margin:0 0 14px">'
 # 'Recommended trigger by region</p>'
 # '<table style="width:100%;border-collapse:collapse">'
@@ -2052,7 +2240,7 @@ elif S == 8:
 # xpos = val + ci[i] + 0.18
 # fig.add_annotation(x=xpos, y=name, text=f"{val:+.2f} {'' if sig else 'ns'}",
 # showarrow=False, xanchor="left",
-# font=dict(family="DM Mono", size=10.5,
+# font=dict(family="Roboto Mono", size=10.5,
 # color=C["red"] if sig else G["tick"]))
 # fig.add_vline(x=0, line_color=G["zero"], line_width=1.5)
 # fig = pset(fig, h=368, l=218, r=26, t=42, b=50)
@@ -2086,13 +2274,13 @@ elif S == 8:
 # ]
 # hdr = (
 # '<tr style="border-bottom:1px solid var(--border2)">'
-# '<th style="font-family:DM Mono,monospace;font-size:9px;color:var(--faint);'
+# '<th style="font-family:DM Mono,monospace;font-size:11px;color:var(--faint);'
 # 'text-transform:uppercase;letter-spacing:1.5px;padding:10px 10px 10px 0;'
 # 'font-weight:400;text-align:left">Predictor</th>'
-# '<th style="font-family:DM Mono,monospace;font-size:9px;color:var(--faint);'
+# '<th style="font-family:DM Mono,monospace;font-size:11px;color:var(--faint);'
 # 'text-transform:uppercase;letter-spacing:1.5px;padding:10px;'
 # 'font-weight:400;text-align:right">Coef.</th>'
-# '<th style="font-family:DM Mono,monospace;font-size:9px;color:var(--faint);'
+# '<th style="font-family:DM Mono,monospace;font-size:11px;color:var(--faint);'
 # 'text-transform:uppercase;letter-spacing:1.5px;padding:10px 0;'
 # 'font-weight:400;text-align:right">p-value</th></tr>'
 # )
@@ -2113,7 +2301,7 @@ elif S == 8:
 # st.markdown(
 # f'<div style="background:var(--surface);border:1px solid var(--border);'
 # f'border-radius:10px;padding:20px;margin-bottom:13px">'
-# f'<p style="font-family:DM Mono,monospace;font-size:9px;font-weight:500;'
+# f'<p style="font-family:DM Mono,monospace;font-size:11px;font-weight:500;'
 # f'color:var(--faint);text-transform:uppercase;letter-spacing:2px;margin:0 0 13px">'
 # f'Coefficient Table</p>'
 # f'<table style="width:100%;border-collapse:collapse">{hdr}{bdy}</table>'
@@ -2158,7 +2346,7 @@ elif S == 8:
 # f'color:{color};line-height:1;flex-shrink:0;width:28px;padding-top:2px">{num}</div>'
 # f'<div>'
 # f'<p style="font-size:14px;font-weight:600;color:var(--text);margin:0 0 5px">{title}</p>'
-# f'<p style="font-size:13px;color:var(--sub);line-height:1.75;font-weight:300">{body}</p>'
+# f'<p style="font-size:13px;color:var(--sub);line-height:1.75;font-weight:400">{body}</p>'
 # f'</div></div>')
 # st.markdown(
 # f'<div style="background:var(--surface);border:1px solid var(--border);'
@@ -2181,7 +2369,7 @@ elif S == 8:
 # f'<div style="background:{bg};border:1px solid {bdr};border-left:3px solid {acc};'
 # f'border-radius:10px;padding:15px 17px;margin-bottom:10px">'
 # f'<p style="font-size:12px;font-weight:600;color:{acc};margin:0 0 6px">{title}</p>'
-# f'<p style="font-size:13px;color:var(--text2);line-height:1.72;font-weight:300">{body}</p>'
+# f'<p style="font-size:13px;color:var(--text2);line-height:1.72;font-weight:400">{body}</p>'
 # f'</div>', unsafe_allow_html=True)
 
 # divider()
