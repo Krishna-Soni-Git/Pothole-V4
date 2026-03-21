@@ -1,195 +1,144 @@
-# 🚧 NS Pothole Freeze-Thaw Analysis
+# NS Pothole Freeze-Thaw Analysis Dashboard
+## Government of Nova Scotia · Department of Public Works · NS TIR + ECCC · 2019–2025
 
-A data analysis project that uses weather data to predict pothole complaint surges in Nova Scotia — up to 5 days before they happen.
-
-**Data sources:** NS TIR Operations Contact Centre (391,795 records, 2019–2025) + Environment Canada (ECCC) daily weather from 5 stations
-
----
-
-## 📁 Project Files
-
-```
-project/
-│
-├── 01_collect_data.py           ← Step 1: Download weather + merge with complaints
-├── 02_analysis.py               ← Step 2: Run all statistics and generate charts
-├── app.py                       ← Step 3: Launch the interactive dashboard
-│
-├── Data/
-│   ├── Operations_Contact_Centre_Call_Summary_20260120.csv.xlsx   ← You provide this
-│   ├── NS_Project_Merged_FIXED.csv                                ← Created by Step 1
-│   └── raw_weather/                                               ← Weather cache (auto-created)
-│
-└── outputs/                     ← Charts and tables (created by Step 2)
-    ├── 01_lag_curve.png
-    ├── 02_seasonal_pattern.png
-    ├── 03_weekday_bias.png
-    ├── 04_new_variables.png
-    ├── 05_rolling_comparison.png
-    ├── 06_ftc_boxplot.png
-    ├── 07_snow_analysis.png
-    ├── 08_regional_heatmap.png
-    ├── 09_ols_coefficients.png
-    ├── correlation_table.csv
-    └── regional_results.csv
-```
+> **One finding:** A freeze-thaw event today predicts a pothole complaint surge **exactly 5 days later** — consistent across every year 2019–2025. NS TIR has a reliable window to pre-stage crews before any citizen calls.
 
 ---
 
-## ⚙️ Setup — Do This Once
+## Requirements
 
-### 1. Make sure Python is installed
-You need **Python 3.10 or higher**. Check your version:
-```bash
-python --version
-```
-
-### 2. Install required packages
-
-**For data collection and analysis:**
-```bash
-pip install pandas numpy openpyxl requests tqdm matplotlib seaborn scipy
-```
-
-**For the dashboard:**
-```bash
-pip install streamlit plotly
-```
-
-### 3. Place the OCC data file
-Put the NS TIR complaints file in the same folder as the scripts:
-```
-Operations_Contact_Centre_Call_Summary_20260120.csv.xlsx
-```
-> ⚠️ The filename must match exactly. The script will tell you if it can't find it.
+- Python 3.8 or higher — download from [python.org](https://www.python.org/downloads/)
+- Git — download from [git-scm.com](https://git-scm.com/)
+- A terminal / command prompt
 
 ---
 
-## 🚀 How to Run — Three Steps in Order
+## Clone & Run (First Time Setup)
 
-### Step 1 — Collect & Merge Data
 ```bash
+# Step 1 — Clone the repository
+git clone https://github.com/Krishna-Soni-Git/Pothole-V4.git
+cd ns-pothole-analysis
+
+# Step 2 — Create a virtual environment
+python -m venv venv
+
+# Step 3 — Activate it
+source venv/bin/activate        # Mac / Linux
+venv\Scripts\activate           # Windows
+
+# Step 4 — Install all dependencies
+pip install pandas numpy openpyxl requests tqdm matplotlib seaborn scipy streamlit plotly
+pip install statsmodels          # Recommended — enables Newey-West HAC standard errors
+
+# Step 5 — Collect data  (first run only — takes 20–40 minutes)
 python 01_collect_data.py
-```
-**What it does:**
-- Downloads daily weather data from Environment Canada for 5 NS stations (2019–2025)
-- Loads the OCC complaints file
-- Matches each complaint to the nearest weather station by region
-- Saves the merged dataset to `Data/NS_Project_Merged_FIXED.csv`
 
-**How long it takes:** 20–40 minutes on first run (downloads ~6 years of weather data). Subsequent runs are instant — it uses the cached files in `Data/raw_weather/`.
-
-**Expected output:**
-```
-✅  Weather collected: 10,950 station-day rows
-✅  Merged dataset saved → Data/NS_Project_Merged_FIXED.csv
-    Shape: 391,795 rows × 18 columns
-```
-
----
-
-### Step 2 — Run the Analysis
-```bash
+# Step 6 — Run the statistical analysis
 python 02_analysis.py
-```
-**What it does:**
-- Engineers features: freeze-thaw days, rolling weather windows, heating degree days, interaction terms
-- Runs Spearman cross-correlations at 1–21 day lags
-- Fits an OLS regression model with 7 weather predictors
-- Runs regional breakdowns for all 5 NS weather stations
-- Saves 9 chart images and 2 summary CSV tables to `outputs/`
 
-**How long it takes:** 1–3 minutes.
-
-**Expected output:**
-```
-✅  09 figures saved to outputs/
-✅  correlation_table.csv  →  outputs/
-✅  regional_results.csv   →  outputs/
-```
-
----
-
-### Step 3 — Launch the Dashboard
-```bash
+# Step 7 — Launch the dashboard
 streamlit run app.py
 ```
-**What it does:**
-- Opens an interactive 9-slide presentation in your browser
-- Covers all major findings with charts and plain-language explanations
 
-**A browser tab will open automatically** at `http://localhost:8501`. If it doesn't, open that URL manually.
+The dashboard opens automatically at **http://localhost:8501**
 
-**To stop the dashboard:** Press `Ctrl + C` in the terminal.
+### Returning Users (already cloned)
 
----
+```bash
+cd ns-pothole-analysis
+git pull                         # Get latest changes
+source venv/bin/activate         # Mac / Linux  (or venv\Scripts\activate on Windows)
+streamlit run app.py
+```
 
-## 🗺️ What the Dashboard Covers
-
-| Slide | Title | What You'll Learn |
-|-------|-------|-------------------|
-| 01 | Overview | The research question and dataset summary |
-| 02 | The Problem | Why reactive patching is too slow and costly |
-| 03 | How Roads Break | The physics of freeze-thaw damage |
-| 04 | Seasonal Pattern | Why July gets the most complaints despite no winter weather |
-| 05 | 5-Day Lag ★ | The core finding — complaints peak 5 days after freeze-thaw events |
-| 06 | Predictors | Which weather variables best predict complaint counts |
-| 07 | By Region | How the signal differs across Halifax, Annapolis Valley, Cape Breton, etc. |
-| 08 | Regression | OLS model results and what the coefficients mean in plain English |
-| 09 | Action Plan | A proposed 3-tier weather alert system for NS TIR operations |
+> **Note:** If someone shares the files directly (no Git), skip Step 1 — just unzip the folder, open a terminal inside it, and start from Step 2.
 
 ---
 
-## 🌡️ Weather Stations Used
+## Project Files
 
-| Station | Region Covered | ECCC ID |
-|---------|---------------|---------|
-| Halifax Stanfield | HRM & Lunenburg | 50620 |
-| Greenwood A | Annapolis Valley & Kings | 50839 |
-| Truro | Colchester & Cumberland | 6354 |
-| Sydney A | Cape Breton | 50308 |
-| Yarmouth A | SW Nova Scotia & Shelburne | 43405 |
-
-> Note: Yarmouth A has limited precipitation data. Sydney A uses a fallback station (Glace Bay) if the primary is unavailable.
+| File | Purpose |
+|------|---------|
+| `01_collect_data.py` | Fetches ECCC weather data and merges with NS TIR records |
+| `02_analysis.py` | Correlations, regression, regional breakdown — saves CSVs to `outputs/` |
+| `app.py` | 13-slide interactive dashboard |
+| `outputs/correlation_table.csv` | All lagged Spearman correlations with Bonferroni-corrected p-values |
+| `outputs/regional_results.csv` | Regional correlation results by weather station |
 
 ---
 
-## 📊 Key Findings (Summary)
+## Dashboard — 13 Slides
 
-- **5-day lag:** Freeze-thaw events reliably predict a surge in pothole complaints 5 days later (Spearman r = −0.081; spring only: r = −0.143, p < 0.001)
-- **Spring amplification:** The signal is 3× stronger during March–May than the full-year average
-- **Top predictors:** Spring season (+4.59 complaints/day), FTC 14-day (−0.67), 7-day snowfall (+0.23)
-- **Regional variation:** Halifax has the strongest freeze-thaw signal; Annapolis Valley and Central NS are precipitation-driven
-- **Model fit:** OLS R² = 7.2% — weather explains 7.2% of daily variance; road age and traffic volume account for most of the rest
+| # | Slide | What It Shows |
+|---|-------|--------------|
+| 00 | Overview | Dataset summary, 4 headline KPIs, methodology |
+| 01 | Summary Stats | All 12 key numbers at a glance |
+| 02 | Plain English | Statistical terms explained for non-technical audiences |
+| 03 | Case Analysis | Halifax Feb 2022 — the 5-day lag as a real event |
+| 04 | The Problem | Annual complaint totals 2019–2025 |
+| 05 | How Roads Break | 6-step physics process, formula definitions |
+| 06 | Seasonal Pattern | Monthly FT days vs avg daily complaints |
+| 07 | 5-Day Lag | Core statistical finding — lagged Spearman correlogram |
+| 08 | Predictors | Weather variables ranked by predictive strength |
+| 09 | By Region | Regional signal breakdown, hatched = not significant |
+| 10 | Regression | OLS coefficient chart + significance table |
+| 11 | Monthly Deep-Dive | Heatmap / trend+weather overlays / region×month / YoY comparison |
+| 12 | Action Plan | 3-tier alert system, limitations, next steps |
 
----
-
-## ❓ Common Issues
-
-**"OCC file not found"**
-> Make sure `Operations_Contact_Centre_Call_Summary_20260120.csv.xlsx` is in the same folder as the scripts. Check the filename matches exactly (including the date).
-
-**"Module not found" error**
-> You're missing a package. Run the pip install commands in the Setup section again.
-
-**Dashboard won't open**
-> Make sure you ran `pip install streamlit plotly` first. Then try opening `http://localhost:8501` manually in your browser.
-
-**Weather download is slow or fails**
-> The ECCC API can be slow. If a station fails, the script automatically tries fallback station IDs. Previously downloaded stations are cached and won't be re-downloaded.
-
-**Analysis script fails with "file not found"**
-> Step 1 must be completed first. Run `python 01_collect_data.py` before `python 02_analysis.py`.
+**Presenter Notes** are on Slide 03 — full speaker scripts for every slide, visible only on your laptop while the projector shows any other slide.
 
 ---
 
-## 📝 Notes
+## Key Results
 
-- All analysis uses **weekdays only** for the OLS regression to remove the call-centre reporting bias (weekend complaints are ~75% lower simply because the phone lines have reduced hours)
-- The freeze-thaw day definition is: `Tmax > 0°C AND Tmin < 0°C` on the same calendar day
-- Rolling weather windows are computed with a **1-day forward shift** to prevent data leakage (only weather before the complaint date is used as a predictor)
-- Data covers January 2019 through September 2025
+| Metric | Value |
+|--------|-------|
+| Day 5 lag (all years) | r = −0.081 |
+| Spring-only r (Mar–May) | r = −0.143 · p = 0.0003 · 3× stronger |
+| Bonferroni correction | 42 tests · α = 0.00119 · 18 / 61 features significant |
+| Full-model R² | 7.2% (includes Spring calendar dummy) |
+| Weather-only R² | ~3–4% |
+| Halifax priority | FTC r = −0.125 · 34% of all NS complaints |
+| Peak month (every year) | July · 398–825 complaints depending on FT season severity |
+
+### 3-Tier Alert System
+| Alert | Trigger | Action |
+|-------|---------|--------|
+| 🔴 HIGH — Deploy | FTC_14d ≥ 5 days OR thaw after 3+ freezing days | Pre-stage crews within 5 days · Halifax first |
+| 🟡 MEDIUM — Monitor | FTC_14d = 2–4 days OR 7-day precip > 25 mm | Schedule patrols · pre-stock materials |
+| 🔵 LOW — Routine | Normal conditions | Standard reactive operations |
 
 ---
 
-*MBAN 2026 · NS TIR Operations Contact Centre + Environment and Climate Change Canada*
+## Statistical Method
+
+**Repeated lagged bivariate Spearman correlations** (not formal CCF/cross-correlation) — corrected for:
+- **Weekday filter** — call-centre hours bias removed
+- **Bonferroni correction** — prevents false positives across 42 simultaneous tests
+- **Effective N** — p-values adjusted for autocorrelation via AR(1) approximation
+- **Newey-West HAC SE** — regression standard errors corrected for serial autocorrelation
+
+### Known Limitations
+1. Seasonality not removed before correlating — shared winter trends may inflate r values
+2. Province-wide weather averaging loses regional signal (5 stations → 1 series)
+3. OLS used for count data — negative binomial regression more appropriate
+4. Road age, PCI, and traffic volume not in the model
+5. Yarmouth A (SW Nova Scotia) missing precipitation data — results inconclusive
+
+---
+
+## Suggested Improvements
+
+| Priority | Enhancement | Expected Impact |
+|----------|------------|----------------|
+| High | Road Age + Pavement Condition Index (PCI) | Weather-only R² from ~3–4% → 10–15% |
+| High | Connect live ECCC 7-day forecast API | Real-time alert generation |
+| Medium | Traffic Volume (AADT) | Distinguish highway from side street damage |
+| Medium | Negative Binomial Regression | More reliable p-values for count data |
+| Low | STL Seasonal Decomposition | Isolate weather signal from shared seasonal trends |
+| Low | Station-Level Panel Model | Preserve regional variation, increase power |
+
+---
+
+*Department of Public Works · MBAN 2026 · Group Project*
