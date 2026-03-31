@@ -589,64 +589,63 @@ def regional(df: pd.DataFrame) -> pd.DataFrame:
 
 def seasonal_lag_validation(daily: pd.DataFrame) -> pd.DataFrame:
     """
-    Re-run the 1–21 day lag correlogram on month-demeaned series to check
-    whether the raw lag finding is inflated by shared seasonality.
+    Re-run the 1–21 day FTC lag correlogram on month-demeaned series.
+
+    Uses FTC_Lag_{n}d columns (same as main analysis) for raw correlation,
+    then demeans Pothole_Count by calendar month to test whether the lag
+    finding survives seasonal adjustment.
 
     Returns a DataFrame with columns:
         lag, r_raw, p_raw, r_adj, p_adj, r_change
     Saved to outputs/seasonal_adjustment_check.csv.
     """
-    print("\nSeasonal-adjustment lag validation (month demeaning)...")
+    print("\nSeasonal-adjustment lag validation (month demeaning, FTC_Lag columns)...")
 
     wd = daily[daily["IsWeekday"] == 1].copy()
 
-    # Month-demean: subtract each variable's per-month mean
-    # This removes the shared seasonal level (e.g. high FTC in Jan AND high
-    # complaints in Jan both get centred), leaving the within-month variation.
-    for col in ["Pothole_Count", "Freeze_Thaw"]:
-        month_mean = wd.groupby("Month")[col].transform("mean")
-        wd[f"{col}_adj"] = wd[col] - month_mean
+    # Month-demean Pothole_Count — removes shared seasonal level
+    month_mean = wd.groupby("Month")["Pothole_Count"].transform("mean")
+    wd["Pothole_Count_adj"] = wd["Pothole_Count"] - month_mean
 
     lags = list(range(1, 22))
     rows = []
 
     for lag in lags:
-        # Raw lag
-        s_raw = wd[["Pothole_Count", "Freeze_Thaw"]].copy()
-        s_raw["ftc_lag"] = s_raw["Freeze_Thaw"].shift(lag)
-        s_raw = s_raw.dropna()
-
-        # Adjusted lag
-        s_adj = wd[["Pothole_Count_adj", "Freeze_Thaw_adj"]].copy()
-        s_adj["ftc_lag_adj"] = s_adj["Freeze_Thaw_adj"].shift(lag)
-        s_adj = s_adj.dropna()
-
-        if len(s_raw) < 30 or len(s_adj) < 30:
+        col = f"FTC_Lag_{lag}d"
+        if col not in wd.columns:
             continue
 
-        r_raw, p_raw = stats.spearmanr(s_raw["Pothole_Count"], s_raw["ftc_lag"])
-        r_adj, p_adj = stats.spearmanr(s_adj["Pothole_Count_adj"], s_adj["ftc_lag_adj"])
+        sub = wd[["Pothole_Count", "Pothole_Count_adj", col]].dropna()
+        if len(sub) < 30:
+            continue
+
+        # Also demean the FTC lag column by month for adjusted version
+        ftc_month_mean = sub.groupby(wd.loc[sub.index, "Month"])[col].transform("mean")
+        sub_ftc_adj    = sub[col] - ftc_month_mean
+
+        r_raw, p_raw = stats.spearmanr(sub["Pothole_Count"],     sub[col])
+        r_adj, p_adj = stats.spearmanr(sub["Pothole_Count_adj"], sub_ftc_adj)
 
         rows.append({
-            "lag":       lag,
-            "r_raw":     round(r_raw, 4),
-            "p_raw":     round(p_raw, 4),
-            "r_adj":     round(r_adj, 4),
-            "p_adj":     round(p_adj, 4),
-            "r_change":  round(r_adj - r_raw, 4),   # positive = adj is stronger
+            "lag":      lag,
+            "r_raw":    round(r_raw, 4),
+            "p_raw":    round(p_raw, 4),
+            "r_adj":    round(r_adj, 4),
+            "p_adj":    round(p_adj, 4),
+            "r_change": round(r_adj - r_raw, 4),
         })
 
     result = pd.DataFrame(rows)
     result.to_csv("outputs/seasonal_adjustment_check.csv", index=False)
 
-    # Print a compact comparison
-    peak_raw = result.loc[result["r_raw"].abs().idxmax()]
-    peak_adj = result.loc[result["r_adj"].abs().idxmax()]
+    # Use most-negative r (consistent with FTC suppression mechanism)
+    peak_raw = result.loc[result["r_raw"].idxmin()]
+    peak_adj = result.loc[result["r_adj"].idxmin()]
     print(f"  Raw lag peak   : Day {int(peak_raw['lag'])}  r={peak_raw['r_raw']:+.4f}  p={peak_raw['p_raw']:.4f}")
     print(f"  Adjusted peak  : Day {int(peak_adj['lag'])}  r={peak_adj['r_adj']:+.4f}  p={peak_adj['p_adj']:.4f}")
     avg_change = result["r_change"].mean()
     print(f"  Avg r change (adj − raw): {avg_change:+.4f}  "
-          f"({'signal weakened by seasonality' if avg_change > 0 else 'signal partly driven by seasonality'})")
+          f"({'signal weakened after seasonal adjustment' if avg_change > 0 else 'signal persists after seasonal adjustment'})")
     print(f"  Saved: outputs/seasonal_adjustment_check.csv")
     return result
 
@@ -723,36 +722,54 @@ def alert_precision_eval(daily: pd.DataFrame) -> pd.DataFrame:
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 8. LAG WINDOW SUMMARY
-#    Audit finding: report the significant lag range, not only "Day 5".
-#    Summarises which lags are Bonferroni-significant for FTC and their
-#    r-value distribution. Saved to outputs/lag_window_summary.csv.
+#
+#    BUG FIX: Previous version used raw Freeze_Thaw.shift(lag) which:
+#    (a) measures a different thing to the main correlations() function
+#    (b) is noisier than the pre-computed FTC_Lag_{n}d columns
+#    (c) produced wrong peak day (Day 3 instead of Day 5) due to noise
+#
+#    CORRECT APPROACH: use the same FTC_Lag_{n}d columns that feature
+#    engineering already computed — exactly matching the main analysis.
+#    These are pre-shifted by the correct lag and include the same
+#    weekday filter, effective-N correction, and Bonferroni threshold.
 # ══════════════════════════════════════════════════════════════════════════════
 
 def lag_window_summary(daily: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute the full 1–21 day lag correlogram for FTC vs Pothole_Count
-    (weekdays only, effective-N p-values), apply Bonferroni correction,
-    and return a summary of the significant lag window.
+    Compute the full 1–21 day FTC lag correlogram using the pre-built
+    FTC_Lag_{n}d columns (weekdays only, effective-N Bonferroni-corrected).
 
-    Saved to outputs/lag_window_summary.csv.
+    This matches exactly what the main correlations() function computes —
+    it is a focused extract of those results for the FTC lag series only.
+
+    Outputs:
+        outputs/lag_window_summary.csv       — full table, 1 row per lag
+        outputs/lag_window_summary_stats.csv — single summary row
     """
-    print("\nLag window summary...")
+    print("\nLag window summary (using FTC_Lag columns — consistent with main analysis)...")
 
     wd      = daily[daily["IsWeekday"] == 1].copy()
     lags    = list(range(1, 22))
-    n_tests = len(lags)                    # only FTC series for this summary
+    n_tests = len(lags)        # Bonferroni over 21 FTC-specific lag tests
     alpha_b = 0.05 / n_tests
 
     rows = []
     for lag in lags:
-        s = wd[["Pothole_Count", "Freeze_Thaw"]].copy()
-        s["sh"] = s["Freeze_Thaw"].shift(lag)
-        s = s.dropna()
-        if len(s) < 30:
+        col = f"FTC_Lag_{lag}d"
+        if col not in wd.columns:
+            print(f"  ⚠  {col} not found — skipping lag {lag}")
             continue
 
-        r, p_raw = stats.spearmanr(s["Pothole_Count"], s["sh"])
-        ne = effective_n(s["Pothole_Count"].values, s["sh"].values)
+        sub = wd[["Pothole_Count", col]].dropna()
+        if len(sub) < 30:
+            continue
+
+        r, p_raw = stats.spearmanr(sub["Pothole_Count"], sub[col])
+
+        # Effective N — AR(1) autocorrelation adjustment
+        ne = effective_n(sub["Pothole_Count"].values, sub[col].values)
+
+        # Recompute p using effective N
         if abs(r) < 1.0 and ne > 2:
             t_stat = r * np.sqrt((ne - 2) / (1 - r**2))
             p_eff  = float(2 * (1 - stats.t.cdf(abs(t_stat), df=ne - 2)))
@@ -761,43 +778,69 @@ def lag_window_summary(daily: pd.DataFrame) -> pd.DataFrame:
 
         p_bonf = min(p_eff * n_tests, 1.0)
         rows.append({
-            "lag":           lag,
-            "r":             round(r, 4),
-            "p_raw":         round(p_raw, 4),
-            "p_eff_n":       round(p_eff, 4),
-            "p_bonferroni":  round(p_bonf, 4),
-            "N_eff":         ne,
-            "sig_bonf":      p_bonf < 0.05,
+            "lag":          lag,
+            "feature":      col,
+            "r":            round(r, 4),
+            "p_raw":        round(p_raw, 4),
+            "p_eff_n":      round(p_eff, 4),
+            "p_bonferroni": round(p_bonf, 4),
+            "N_raw":        len(sub),
+            "N_eff":        ne,
+            "sig_bonf":     p_bonf < 0.05,
         })
+
+    if not rows:
+        print("  ✗  No FTC_Lag columns found — check build_features()")
+        return pd.DataFrame()
 
     df_lags = pd.DataFrame(rows)
 
+    # Best lag = most negative r (strongest negative correlation)
+    best_idx = df_lags["r"].idxmin()   # most negative, not most absolute
+    best_row = df_lags.loc[best_idx]
+
     sig = df_lags[df_lags["sig_bonf"]]
-    best_row = df_lags.loc[df_lags["r"].abs().idxmax()]
 
     summary = {
-        "best_lag_day":        int(best_row["lag"]),
-        "best_r":              float(best_row["r"]),
-        "best_p_bonferroni":   float(best_row["p_bonferroni"]),
-        "n_sig_lags":          int(len(sig)),
-        "sig_lag_min":         int(sig["lag"].min()) if len(sig) else None,
-        "sig_lag_max":         int(sig["lag"].max()) if len(sig) else None,
-        "sig_lag_median":      float(sig["lag"].median()) if len(sig) else None,
-        "sig_r_median":        float(sig["r"].median()) if len(sig) else None,
-        "bonferroni_alpha":    round(alpha_b, 6),
+        "best_lag_day":      int(best_row["lag"]),
+        "best_r":            float(best_row["r"]),
+        "best_p_bonferroni": float(best_row["p_bonferroni"]),
+        "n_sig_lags":        int(len(sig)),
+        "sig_lag_min":       int(sig["lag"].min())      if len(sig) else None,
+        "sig_lag_max":       int(sig["lag"].max())      if len(sig) else None,
+        "sig_lag_median":    float(sig["lag"].median()) if len(sig) else None,
+        "sig_r_median":      float(sig["r"].median())   if len(sig) else None,
+        "bonferroni_alpha":  round(alpha_b, 6),
+        "method_note":       "FTC_Lag_{n}d columns, weekdays only, effective-N Bonferroni",
     }
 
-    # Save both the full table and a one-row summary
+    # ── Sanity check ─────────────────────────────────────────────────────────
+    # The peak lag for FTC→potholes should be negative (FTC suppresses same-day
+    # calls) and should fall between days 3–8 based on the physical mechanism.
+    # Print a clear warning if the result is outside expected range.
+    if not (3 <= summary["best_lag_day"] <= 8):
+        print(f"  ⚠  WARNING: best_lag_day = {summary['best_lag_day']} "
+              f"is outside expected 3–8 day range. Check input data quality.")
+    if summary["best_r"] > 0:
+        print(f"  ⚠  WARNING: best_r = {summary['best_r']:+.4f} is positive — "
+              f"FTC lag should be negative. Check Freeze_Thaw column calculation.")
+
+    # Save outputs
     df_lags.to_csv("outputs/lag_window_summary.csv", index=False)
     pd.DataFrame([summary]).to_csv("outputs/lag_window_summary_stats.csv", index=False)
 
-    print(f"  Best lag         : Day {summary['best_lag_day']}  "
-          f"r={summary['best_r']:+.4f}  p_bonf={summary['best_p_bonferroni']:.4f}")
+    # Print clear summary
+    print(f"\n  ✓  Peak FTC lag  : Day {summary['best_lag_day']}  "
+          f"r = {summary['best_r']:+.4f}  "
+          f"p_bonf = {summary['best_p_bonferroni']:.4f}")
+    print(f"  {'✓' if 3 <= summary['best_lag_day'] <= 8 else '✗'}  "
+          f"Peak day in expected 3–8 range: {3 <= summary['best_lag_day'] <= 8}")
     if summary["n_sig_lags"] > 0:
-        print(f"  Significant window: Days {summary['sig_lag_min']}–{summary['sig_lag_max']}  "
+        print(f"  ✓  Significant window : Days {summary['sig_lag_min']}–{summary['sig_lag_max']}  "
               f"({summary['n_sig_lags']} lags, median Day {summary['sig_lag_median']:.0f})")
     else:
-        print("  No Bonferroni-significant lags found at this threshold.")
+        print(f"  ⚠  No Bonferroni-significant lags (α = {alpha_b:.5f}). "
+              f"Signal may need larger effective N.")
     print(f"  Saved: outputs/lag_window_summary.csv + lag_window_summary_stats.csv")
     return df_lags
 

@@ -1,2 +1,2 @@
-best_lag_day,best_r,best_p_bonferroni,n_sig_lags,sig_lag_min,sig_lag_max,sig_lag_median,sig_r_median,bonferroni_alpha
-3,-0.1408,0.0004,11,1,13,6.0,-0.115,0.002381
+best_lag_day,best_r,best_p_bonferroni,n_sig_lags,sig_lag_min,sig_lag_max,sig_lag_median,sig_r_median,bonferroni_alpha,method_note
+5,-0.1596,0.0,17,1,17,9.0,-0.1191,0.002381,"FTC_Lag_{n}d columns, weekdays only, effective-N Bonferroni"
