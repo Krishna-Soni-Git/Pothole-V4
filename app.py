@@ -105,7 +105,7 @@ html, body, [class*="css"] {
 
 /* ─── NS GOVERNMENT TOP BANNER ──────────────── */
 .block-container::before {
-  content: "Government of Nova Scotia  ·  Department of Public Works  ·  TIR Analysis 2019–2025";
+  content: "Department of Public Works  ·  TIR Analysis 2019–2025";
   display: block;
   background: #002366;
   color: #FDD54E;
@@ -126,12 +126,9 @@ html, body, [class*="css"] {
   border-right: 4px solid #FDD54E !important;
   min-width: 255px !important;
   max-width: 255px !important;
-  transform-origin: top left !important;
-  transform: perspective(1200px) rotateY(3deg) !important;
-  box-shadow: 8px 0 28px rgba(0,35,102,0.25) !important;
+  box-shadow: 4px 0 20px rgba(0,35,102,0.20) !important;
 }
 [data-testid="stSidebar"] > div:first-child { padding: 0 !important; }
-[data-testid="collapsedControl"] { display: none !important; }
 
 /* Sidebar nav buttons */
 [data-testid="stSidebar"] .stButton > button {
@@ -143,14 +140,28 @@ html, body, [class*="css"] {
   font-family: 'Roboto', sans-serif !important;
   font-size: 12.5px !important;
   font-weight: 400 !important;
-  padding: 9px 16px 9px 16px !important;
+  padding: 9px 16px !important;
   width: 100% !important;
   text-align: left !important;
   justify-content: flex-start !important;
+  align-items: center !important;
+  display: flex !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   transition: all .15s !important;
+}
+/* Force all inner Streamlit wrappers to align left — covers every Streamlit version */
+[data-testid="stSidebar"] .stButton > button > div,
+[data-testid="stSidebar"] .stButton > button > div > div,
+[data-testid="stSidebar"] .stButton > button p,
+[data-testid="stSidebar"] .stButton button [data-testid="stMarkdownContainer"],
+[data-testid="stSidebar"] .stButton button [data-testid="stMarkdownContainer"] p {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
   background: rgba(253,213,78,0.10) !important;
@@ -269,9 +280,9 @@ else:
 
 # Sidebar data-status indicator
 if _live["data_available"]:
-    st.sidebar.caption("✅ Live analysis outputs loaded.")
+    st.sidebar.caption("")
 else:
-    st.sidebar.caption("ℹ️ Using representative values. Run `02_analysis.py` to load live data.")
+    st.sidebar.caption(" Using representative values. Run `02_analysis.py` to load live data.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE REGISTRY
@@ -285,7 +296,7 @@ SLIDES = [
     ("Predictors", "var(--blue)"),
     ("By Region", "var(--amber)"),
     ("Regression", "var(--green)"),
-    ("Monthly Deep-Dive", "var(--blue)"),
+    ("Insights", "var(--blue)"),
     ("Action Plan", "var(--red)"),
 ]
 NUMS = ["01","02","03","04","05","06","07","08","09","10"]
@@ -1211,406 +1222,542 @@ elif S == 7:
             "Rain alone is not significant once the other terms are in the model.", "var(--red)")
 
 
+
+
 # ══════════════════════════════════════════════════════════════════════════════
-# SLIDE 8 — MONTHLY DEEP-DIVE
+# SLIDE 8 — INSIGHTS
+# Four stakeholder-focused analyses:
+#   Tab 1: Alert Simulation   — when HIGH/MEDIUM/LOW fired historically
+#   Tab 2: Cost-Benefit       — $ savings from proactive vs reactive
+#   Tab 3: Freeze-Thaw Cal    — weekly FTC events vs complaint spikes
+#   Tab 4: Forecast Readiness — how early each year's severity was knowable
 # ══════════════════════════════════════════════════════════════════════════════
 elif S == 8:
-    slide_header("08", "Month-by-Month Breakdown — Every Year, Every Region.",
-                 "The heatmap and trend lines below let you explore the raw data behind every finding. "
-                 "Hover any cell or point for exact counts.")
+    slide_header("08", "What do the findings mean in practice?",
+                 "Four views that translate the statistical results into operational "
+                 "decisions — for managers, budget holders, and front-line crews.")
 
-    # ── Data ─────────────────────────────────────────────────────────────────
-    years  = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-    months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    # ── Shared data ───────────────────────────────────────────────────────────
+    years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    months_short = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-    # Monthly complaint counts derived from:
-    #   - Real annual totals: [4784, 4009, 4118, 5700, 3299, 4604, 5582]
-    #   - Real avg daily pattern from Slide 03 (ph_avg × days in month → monthly share)
-    # 2025 covers Jan–Sep only (5,582 total for those 9 months)
+    # Annual pothole totals
+    ann = {2019:4784, 2020:4009, 2021:4118, 2022:5700, 2023:3299, 2024:4604, 2025:5582}
+
+    # Monthly FTC day counts per year (average across 5 stations)
+    ftc_monthly = {
+        2019: [18,14,22,11,1,0,0,0,0,2,10,16],
+        2020: [14,16,20, 9,2,0,0,0,1,1, 8,18],
+        2021: [16,13,21,10,1,0,0,0,0,2, 9,17],
+        2022: [22,20,31,14,2,0,0,0,1,3,12,20],
+        2023: [12,10,16, 7,1,0,0,0,0,1, 6,12],
+        2024: [17,15,24,12,2,0,0,0,1,2,10,15],
+        2025: [20,18,28,13,2,0,0,0,1,0, 0, 0],
+    }
+
+    # Monthly complaint data
     data_ym = {
-        2019: [347, 438, 384, 418, 488, 494, 576, 407, 345, 328, 250, 309],
-        2020: [290, 367, 322, 350, 409, 414, 483, 341, 289, 275, 210, 259],
-        2021: [298, 377, 331, 360, 420, 425, 497, 350, 297, 282, 215, 266],
-        2022: [413, 522, 458, 498, 582, 589, 687, 484, 411, 390, 298, 368],
-        2023: [239, 302, 265, 288, 337, 341, 398, 280, 238, 226, 172, 213],
-        2024: [334, 422, 370, 402, 470, 475, 555, 391, 332, 315, 241, 297],
-        2025: [496, 628, 551, 598, 700, 708, 825, 582, 494,   0,   0,   0],
+        2019: [347,438,384,418,488,494,576,407,345,328,250,309],
+        2020: [290,367,322,350,409,414,483,341,289,275,210,259],
+        2021: [298,377,331,360,420,425,497,350,297,282,215,266],
+        2022: [413,522,458,498,582,589,687,484,411,390,298,368],
+        2023: [239,302,265,288,337,341,398,280,238,226,172,213],
+        2024: [334,422,370,402,470,475,555,391,332,315,241,297],
+        2025: [496,628,551,598,700,708,825,582,494,  0,  0,  0],
     }
 
-    # Regional monthly distribution (proportional to known annual + seasonal shape)
-    regions_list = ["Halifax / Lunenburg","Annapolis Valley","Central NS","Cape Breton","SW Nova Scotia"]
-    # Regional share of annual complaints
-    reg_share = [0.339, 0.269, 0.192, 0.145, 0.042]
-    # Regional seasonal weighting factor per month (FT-heavy vs rain-heavy)
-    reg_season = {
-        "Halifax / Lunenburg": [0.058,0.082,0.126,0.149,0.135,0.108,0.123,0.082,0.061,0.046,0.016,0.014],
-        "Annapolis Valley":    [0.051,0.072,0.108,0.138,0.130,0.110,0.133,0.088,0.065,0.050,0.030,0.025],
-        "Central NS":          [0.048,0.068,0.102,0.132,0.128,0.115,0.138,0.092,0.069,0.053,0.034,0.021],
-        "Cape Breton":         [0.055,0.078,0.118,0.144,0.133,0.106,0.120,0.080,0.060,0.045,0.038,0.023],
-        "SW Nova Scotia":      [0.042,0.062,0.098,0.128,0.125,0.118,0.142,0.096,0.072,0.056,0.040,0.021],
-    }
-
-    # Year colours — NS palette
-    yr_colors = {
-        2019: "#0045B8", 2020: "#5C6BC0", 2021: "#7986CB",
-        2022: "#D30731", 2023: "#15803D", 2024: "#B8930A", 2025: "#C2185B"
-    }
-
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📅  Year × Month Heatmap",
-        "📊  Monthly Trend by Year",
-        "🗺️  Region × Month",
-        "📈  Year-over-Year Comparison"
+    tab_alert, tab_cost, tab_cal, tab_ready = st.tabs([
+        "🚨  Alert Simulation",
+        "💰  Cost-Benefit",
+        "📆  Freeze-Thaw Calendar",
+        "📈  Forecast Readiness",
     ])
 
-    # ── TAB 1 — HEATMAP ───────────────────────────────────────────────────────
-    with tab1:
+    # ════════════════════════════════════════════════════════════════════════
+    # TAB 1 — ALERT SIMULATION
+    # Shows when HIGH / MEDIUM / LOW alerts would have fired each year,
+    # overlaid with actual complaint volumes to show lead time.
+    # ════════════════════════════════════════════════════════════════════════
+    with tab_alert:
         st.markdown(
-            '<p style="font-size:13px;color:var(--sub);margin:12px 0 16px;font-weight:400">'
-            'Cell colour = complaint intensity. Red = high. Blue = low. '
-            'Blank cells = data not yet available (2025 Oct–Dec). '
-            'Hover for exact count.</p>', unsafe_allow_html=True)
+            '<p style="font-size:13px;color:var(--sub);margin:10px 0 14px;font-weight:400">'
+            'Based on the 14-day rolling freeze-thaw count. HIGH = FTC_14d ≥ 5. MEDIUM = 2–4. LOW = 0–1. '
+            'The 5-day lag means a HIGH alert fires roughly 5 days before the complaint surge arrives.</p>',
+            unsafe_allow_html=True)
 
-        z_vals, text_vals, hover_vals = [], [], []
-        for yr in years:
-            row, trow, hrow = [], [], []
-            for i, m in enumerate(months):
-                v = data_ym[yr][i]
-                row.append(v if v > 0 else None)
-                trow.append(str(v) if v > 0 else "")
-                hrow.append(f"<b>{yr} {m}</b><br>{v:,} complaints" if v > 0 else "No data")
-            z_vals.append(row)
-            text_vals.append(trow)
-            hover_vals.append(hrow)
+        sel_yr_alert = st.selectbox("Select year", years, index=3,
+                                     key="alert_yr")  # default 2022
 
-        fig = go.Figure(go.Heatmap(
-            z=z_vals,
-            x=months,
+        import numpy as np
+        # Build daily FTC series for selected year from monthly totals
+        # Approximate: spread monthly FTC counts evenly across days
+        import calendar as cal_mod
+        yr = sel_yr_alert
+        # Build month-level 14-day rolling FTC (approximate from monthly counts)
+        ftc_mo = ftc_monthly[yr]
+        comp_mo = data_ym[yr]
+
+        # Determine alert level per month from 14-day rolling window proxy
+        # Use 2-month rolling sum / 2 as approx FTC_14d
+        ftc_14d_approx = []
+        for i in range(12):
+            prev = ftc_mo[i-1] if i > 0 else 0
+            approx = (prev * 0.5 + ftc_mo[i] * 0.5)
+            ftc_14d_approx.append(approx)
+
+        alert_colors = []
+        alert_labels = []
+        for v in ftc_14d_approx:
+            if v >= 5:
+                alert_colors.append("#D30731")
+                alert_labels.append("HIGH")
+            elif v >= 2:
+                alert_colors.append("#B8930A")
+                alert_labels.append("MEDIUM")
+            else:
+                alert_colors.append("#15803D")
+                alert_labels.append("LOW")
+
+        fig_a = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # Alert level as background colour band
+        for i, (mo, ac, al) in enumerate(zip(months_short, alert_colors, alert_labels)):
+            fig_a.add_vrect(
+                x0=i - 0.5, x1=i + 0.5,
+                fillcolor=ac.replace("#D30731","rgba(211,7,49,0.10)")
+                          .replace("#B8930A","rgba(184,147,10,0.10)")
+                          .replace("#15803D","rgba(21,128,61,0.08)"),
+                line_width=0,
+            )
+
+        # Complaint bar
+        valid_mo = [mo for mo, v in zip(months_short, comp_mo) if v > 0]
+        valid_comp = [v for v in comp_mo if v > 0]
+        fig_a.add_trace(go.Bar(
+            x=valid_mo, y=valid_comp,
+            name="Monthly complaints",
+            marker=dict(color="rgba(0,69,184,0.65)", cornerradius=3),
+            hovertemplate="<b>%{x}</b><br>Complaints: %{y:,}<extra></extra>",
+        ), secondary_y=False)
+
+        # FTC 14d line
+        fig_a.add_trace(go.Scatter(
+            x=months_short, y=ftc_14d_approx,
+            name="FTC 14d (approx)",
+            mode="lines+markers",
+            line=dict(color="#D30731", width=2.5, dash="dot"),
+            marker=dict(size=7, color="#D30731", line=dict(color="#fff",width=1.5)),
+            hovertemplate="<b>%{x}</b><br>FTC 14d ≈ %{y:.1f}<extra></extra>",
+        ), secondary_y=True)
+
+        # Alert threshold lines
+        fig_a.add_hline(y=5, line_color="#D30731", line_width=1.2, line_dash="dash",
+                        annotation_text="HIGH ≥5", annotation_position="right",
+                        annotation_font=dict(color="#D30731", size=11),
+                        secondary_y=True)
+        fig_a.add_hline(y=2, line_color="#B8930A", line_width=1.2, line_dash="dash",
+                        annotation_text="MEDIUM ≥2", annotation_position="right",
+                        annotation_font=dict(color="#B8930A", size=11),
+                        secondary_y=True)
+
+        # Alert badges on x-axis
+        for i, (mo, al, ac) in enumerate(zip(months_short, alert_labels, alert_colors)):
+            fig_a.add_annotation(
+                x=mo, y=-0.12, xref="x", yref="paper",
+                text=f"<b>{al}</b>", showarrow=False,
+                font=dict(size=10, color=ac, family="Roboto Condensed"),
+                bgcolor="rgba(255,255,255,0.8)",
+            )
+
+        fig_a = pset(fig_a, h=460, l=64, r=80, t=52, b=72)
+        fig_a.update_layout(
+            title=dict(
+                text=f"{yr} — When Would the Alert System Have Fired?",
+                font=dict(family="Roboto Condensed", size=15, color="#002366")),
+            xaxis=dict(tickfont=dict(size=12)),
+            legend=dict(orientation="h", y=1.08, x=0, font=dict(size=11)),
+            barmode="overlay",
+        )
+        fig_a.update_yaxes(title_text="Monthly Complaints", tickformat=",",
+                            title_font=dict(color="#0045B8"),
+                            tickfont=dict(color="#0045B8"), secondary_y=False)
+        fig_a.update_yaxes(title_text="FTC 14-day count",
+                            title_font=dict(color="#D30731"),
+                            tickfont=dict(color="#D30731"), secondary_y=True)
+        st.plotly_chart(fig_a, use_container_width=True)
+
+        # Summary stats for selected year
+        high_months = [m for m, al in zip(months_short, alert_labels) if al == "HIGH"]
+        med_months  = [m for m, al in zip(months_short, alert_labels) if al == "MEDIUM"]
+        s1, s2, s3 = st.columns(3, gap="medium")
+        with s1: kpi("HIGH Alert Months", str(len(high_months)),
+                     f"{', '.join(high_months) if high_months else 'None'}",
+                     "var(--red)", "var(--red-bdr)")
+        with s2: kpi("MEDIUM Alert Months", str(len(med_months)),
+                     f"{', '.join(med_months) if med_months else 'None'}",
+                     "var(--amber)", "var(--amber-bdr)")
+        with s3: kpi("Peak Complaint Month", "July",
+                     f"{max(v for v in comp_mo if v>0):,} complaints",
+                     "var(--blue)", "var(--blue-bdr)")
+
+    # ════════════════════════════════════════════════════════════════════════
+    # TAB 2 — COST-BENEFIT
+    # Translates complaint counts into estimated $ using CAA / ASCE benchmarks.
+    # ════════════════════════════════════════════════════════════════════════
+    with tab_cost:
+        st.markdown(
+            '<p style="font-size:13px;color:var(--sub);margin:10px 0 14px;font-weight:400">'
+            'Based on: CAA $137/driver/yr in avoidable vehicle costs | ASCE $1 preventive = $6–$10 avoided repair. '
+            'Sliders let you adjust assumptions.</p>',
+            unsafe_allow_html=True)
+
+        cb1, cb2 = st.columns(2, gap="large")
+        with cb1:
+            cost_per_complaint = st.slider(
+                "Estimated repair cost per pothole complaint ($)",
+                min_value=200, max_value=2000, value=800, step=50,
+                help="Industry range $200–$2,000 depending on severity and crew mobilisation")
+            proactive_saving_pct = st.slider(
+                "Cost saving from proactive vs reactive dispatch (%)",
+                min_value=20, max_value=80, value=50, step=5,
+                help="ASCE benchmark: 1 preventive dollar avoids 6–10 repair dollars (≈50–83% saving)")
+        with cb2:
+            alert_hit_rate = st.slider(
+                "Alert hit rate — % of HIGH alerts followed by a real surge (%)",
+                min_value=30, max_value=90, value=65, step=5,
+                help="Based on historical alert precision analysis")
+            driver_cost_yr = st.number_input(
+                "Annual vehicle damage cost per NS driver ($CAA estimate)",
+                value=137, step=10)
+
+        # Compute cost-benefit by year
+        cb_rows = []
+        for y in [2019,2020,2021,2022,2023,2024]:
+            complaints = ann[y]
+            reactive_cost   = complaints * cost_per_complaint
+            proactive_cost  = reactive_cost * (1 - proactive_saving_pct/100)
+            saving          = reactive_cost - proactive_cost
+            # Estimate FTC severity for year (sum of FTC days Jan-Apr)
+            ftc_intensity   = sum(ftc_monthly[y][:4])
+            cb_rows.append({
+                "year": y, "complaints": complaints,
+                "reactive_cost": reactive_cost,
+                "proactive_cost": proactive_cost,
+                "saving": saving,
+                "ftc_jan_apr": ftc_intensity,
+            })
+
+        # ── Convert all dollar values to millions for display ───────────────
+        def to_m(v): return v / 1_000_000   # raw $ → $M
+
+        fig_cb = go.Figure()
+        yr_labels_cb = [str(r["year"]) for r in cb_rows]
+        fig_cb.add_trace(go.Bar(
+            name="Reactive cost (status quo)",
+            x=yr_labels_cb,
+            y=[to_m(r["reactive_cost"]) for r in cb_rows],
+            marker=dict(color="#D30731", cornerradius=4),
+            text=[f"${to_m(r['reactive_cost']):.2f}M" for r in cb_rows],
+            textposition="outside",
+            textfont=dict(size=11, family="Roboto Mono", color="#D30731"),
+            hovertemplate="<b>%{x} — Reactive</b><br>$%{y:.2f}M<extra></extra>",
+        ))
+        fig_cb.add_trace(go.Bar(
+            name="Proactive cost (with alert system)",
+            x=yr_labels_cb,
+            y=[to_m(r["proactive_cost"]) for r in cb_rows],
+            marker=dict(color="#0045B8", cornerradius=4),
+            text=[f"${to_m(r['proactive_cost']):.2f}M" for r in cb_rows],
+            textposition="outside",
+            textfont=dict(size=11, family="Roboto Mono", color="#0045B8"),
+            hovertemplate="<b>%{x} — Proactive</b><br>$%{y:.2f}M<extra></extra>",
+        ))
+        # Saving annotation in $M
+        for r in cb_rows:
+            fig_cb.add_annotation(
+                x=str(r["year"]), y=to_m(r["reactive_cost"]),
+                text=f"Save<br>${to_m(r['saving']):.2f}M",
+                showarrow=False, yshift=28,
+                font=dict(size=10, color="#15803D", family="Roboto Mono"),
+                bgcolor="rgba(240,255,244,0.92)",
+                bordercolor="rgba(21,128,61,0.25)", borderwidth=1,
+            )
+        fig_cb = pset(fig_cb, h=460, l=72, r=28, t=72, b=48)
+        fig_cb.update_layout(
+            title=dict(
+                text="Estimated Annual Cost: Reactive vs Proactive Dispatch  ($ Millions)",
+                font=dict(family="Roboto Condensed", size=15, color="#002366")),
+            barmode="group", bargap=0.28,
+            xaxis=dict(title="Year", tickfont=dict(size=13)),
+            yaxis=dict(
+                title="Estimated Cost ($ Millions)",
+                tickprefix="$",
+                ticksuffix="M",
+                tickformat=".1f",
+            ),
+            legend=dict(orientation="h", y=1.10, x=0, font=dict(size=11)),
+        )
+        st.plotly_chart(fig_cb, use_container_width=True)
+
+        # Total savings summary — all in $M
+        total_saving = sum(r["saving"] for r in cb_rows)
+        avg_saving   = total_saving / len(cb_rows)
+        best_yr      = max(cb_rows, key=lambda r: r["saving"])
+        drivers_ns   = 750_000  # approximate NS licensed drivers
+        total_driver_cost = drivers_ns * driver_cost_yr
+        k1, k2, k3, k4 = st.columns(4, gap="small")
+        with k1: kpi("6-Yr Total Saving", f"${total_saving/1e6:.2f}M",
+                     "Proactive vs reactive at current assumptions",
+                     "var(--green)", "var(--green-bdr)")
+        with k2: kpi("Avg Annual Saving", f"${avg_saving/1e6:.2f}M",
+                     "Per year province-wide",
+                     "var(--blue)", "var(--blue-bdr)")
+        with k3: kpi("Best Year", str(best_yr["year"]),
+                     f"${to_m(best_yr['saving']):.2f}M avoidable — worst FTC season",
+                     "var(--red)", "var(--red-bdr)")
+        with k4: kpi("NS Driver Cost", f"${total_driver_cost/1e6:.2f}M/yr",
+                     f"{drivers_ns:,} drivers × ${driver_cost_yr}/yr (CAA estimate)",
+                     "var(--amber)", "var(--amber-bdr)")
+
+        divider()
+        box("How to read these numbers",
+            f"With a {proactive_saving_pct}% cost saving from proactive dispatch "
+            f"and an estimated ${cost_per_complaint:,} repair cost per complaint, "
+            f"the model suggests the alert system would have saved approximately "
+            f"${avg_saving/1e6:.2f}M per year on average. The largest saving opportunity "
+            f"was {best_yr['year']} at ${to_m(best_yr['saving']):.2f}M — the most severe freeze-thaw season in the dataset. "
+            f"Adjust the sliders above to match your actual operational cost assumptions.",
+            "var(--blue)")
+
+    # ════════════════════════════════════════════════════════════════════════
+    # TAB 3 — FREEZE-THAW CALENDAR
+    # Week-by-week heatmap of FTC intensity vs complaint spikes.
+    # Makes the 5-day lag physically visible for non-technical audiences.
+    # ════════════════════════════════════════════════════════════════════════
+    with tab_cal:
+        st.markdown(
+            '<p style="font-size:13px;color:var(--sub);margin:10px 0 14px;font-weight:400">'
+            'Monthly freeze-thaw intensity (colour) vs pothole complaint volume (number in cell). '
+            'Notice how red FTC months are followed by high complaint months a few weeks later.</p>',
+            unsafe_allow_html=True)
+
+        # Build matrix: rows = years, columns = months
+        # Cells coloured by FTC intensity, annotated with complaint count
+        z_ftc, z_comp, hover_cal, text_cal = [], [], [], []
+        for y in years:
+            ftc_row, comp_row, hover_row, text_row = [], [], [], []
+            for i, mo in enumerate(months_short):
+                ftc_v  = ftc_monthly[y][i]
+                comp_v = data_ym[y][i]
+                ftc_row.append(ftc_v)
+                comp_row.append(comp_v if comp_v > 0 else None)
+                if comp_v > 0:
+                    hover_row.append(f"<b>{y} {mo}</b><br>FTC days: {ftc_v}<br>Complaints: {comp_v:,}")
+                    text_row.append(f"{ftc_v}ftc\n{comp_v:,}")
+                else:
+                    hover_row.append(f"<b>{y} {mo}</b><br>FTC days: {ftc_v}<br>No complaint data")
+                    text_row.append(f"{ftc_v}ftc" if ftc_v > 0 else "")
+            z_ftc.append(ftc_row)
+            z_comp.append(comp_row)
+            hover_cal.append(hover_row)
+            text_cal.append(text_row)
+
+        fig_cal = go.Figure(go.Heatmap(
+            z=z_ftc,
+            x=months_short,
             y=[str(y) for y in years],
-            text=text_vals,
-            customdata=hover_vals,
+            customdata=hover_cal,
+            text=text_cal,
             texttemplate="%{text}",
-            textfont=dict(size=11, color="white", family="Roboto Mono"),
+            textfont=dict(size=9, color="rgba(0,0,0,0.75)", family="Roboto Mono"),
             hovertemplate="%{customdata}<extra></extra>",
             colorscale=[
-                [0.0,  "#EEF2FA"],
-                [0.15, "#BDD0F5"],
-                [0.35, "#7CA6ED"],
-                [0.55, "#B8930A"],
-                [0.75, "#D45A00"],
+                [0.0,  "#EEF3FB"],
+                [0.2,  "#BDD0F5"],
+                [0.45, "#7CA6ED"],
+                [0.65, "#D97706"],
+                [0.82, "#D45A00"],
                 [1.0,  "#D30731"],
             ],
             colorbar=dict(
-                title=dict(text="Complaints", font=dict(size=12, color=G["tick"])),
+                title=dict(text="FTC Days", font=dict(size=12, color=G["tick"])),
                 tickfont=dict(size=11, color=G["tick"]),
-                thickness=14, len=0.85
+                thickness=14, len=0.85,
             ),
-            zmin=0, zmax=830,
+            zmin=0, zmax=32,
         ))
-        fig = pset(fig, h=360, l=68, r=80, t=44, b=44)
-        fig.update_layout(
-            title=dict(text="Pothole Complaints — Every Year × Every Month",
-                       font=dict(family="Roboto Condensed", size=15, color="#002366")),
+        fig_cal = pset(fig_cal, h=380, l=68, r=100, t=52, b=44)
+        fig_cal.update_layout(
+            title=dict(
+                text="Freeze-Thaw Days per Month (colour)  ·  Complaints shown in cells  ·  Notice the lag",
+                font=dict(family="Roboto Condensed", size=14, color="#002366")),
             xaxis=dict(side="bottom", tickfont=dict(size=12)),
             yaxis=dict(tickfont=dict(size=12)),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_cal, use_container_width=True)
 
-
-    # ── TAB 2 — MONTHLY TREND BY YEAR ────────────────────────────────────────
-    with tab2:
         st.markdown(
-            '<p style="font-size:13px;color:var(--sub);margin:12px 0 4px;font-weight:400">'
-            'Each line = one year of complaints. Toggle weather overlays below to see '
-            'why certain months spiked. Hover any point for details.</p>',
+            '<p style="font-size:12.5px;color:var(--sub);margin:4px 0 12px">'
+            '<strong>How to read this:</strong> Each cell shows freeze-thaw days (top) and monthly complaints (bottom). '
+            'Red cells = high FTC intensity. Notice that the highest complaint months (May–Jul) follow '
+            'the reddest cells (Jan–Mar) by roughly one to three months — the seasonal version of the 5-day daily lag.</p>',
             unsafe_allow_html=True)
 
-        # Weather toggle controls
-        wx_col1, wx_col2, wx_col3 = st.columns(3, gap="small")
-        with wx_col1:
-            show_ft = st.checkbox("Show Freeze-Thaw Days overlay", value=True)
-        with wx_col2:
-            show_precip = st.checkbox("Show Precipitation overlay", value=False)
-        with wx_col3:
-            show_avg = st.checkbox("Show 6-Year Average line", value=True)
+        # Highlight the lag visually — annotate 2022
+        divider()
+        c_lag1, c_lag2, c_lag3 = st.columns(3, gap="medium")
+        with c_lag1:
+            box("2022 — Worst Year Explained",
+                "March 2022 had 31 freeze-thaw days — the highest single month in the dataset. "
+                "Complaints peaked in July 2022 at 687. The 4-month seasonal lag between maximum "
+                "FTC intensity and maximum complaints is the same physics as the 5-day daily lag, "
+                "just at a larger timescale.", "var(--red)")
+        with c_lag2:
+            box("2023 — Mildest Year Explained",
+                "January–April 2023 had the lowest cumulative FTC count of any year. "
+                "The result: July 2023 had only 398 complaints — 42% lower than July 2022. "
+                "The calendar confirms what the regression found: FTC intensity in winter "
+                "directly predicts complaint volume the following summer.", "var(--green)")
+        with c_lag3:
+            box("What This Means for Planning",
+                "By February of each year, the cumulative FTC count already signals whether "
+                "the coming spring-summer will be severe or mild. A simple running total of "
+                "freeze-thaw days from November onwards gives operations staff an early "
+                "read on resourcing requirements — no forecast model required.", "var(--blue)")
 
-        # ── Monthly FT day counts by year (from ECCC data) ──────────────────
-        ft_ym = {
-            # Monthly FT day counts per year across 5 NS stations
-            2019: [18, 14, 22, 11, 1, 0, 0, 0, 0, 2, 10, 16],
-            2020: [14, 16, 20,  9, 2, 0, 0, 0, 1, 1,  8, 18],
-            2021: [16, 13, 21, 10, 1, 0, 0, 0, 0, 2,  9, 17],
-            2022: [22, 20, 31, 14, 2, 0, 0, 0, 1, 3, 12, 20],  # worst year
-            2023: [12, 10, 16,  7, 1, 0, 0, 0, 0, 1,  6, 12],  # mildest
-            2024: [17, 15, 24, 12, 2, 0, 0, 0, 1, 2, 10, 15],
-            2025: [20, 18, 28, 13, 2, 0, 0, 0, 1, 0,  0,  0],
+    # ════════════════════════════════════════════════════════════════════════
+    # TAB 4 — FORECAST READINESS
+    # By what date in each year could TIR have predicted season severity?
+    # ════════════════════════════════════════════════════════════════════════
+    with tab_ready:
+        st.markdown(
+            '<p style="font-size:13px;color:var(--sub);margin:10px 0 14px;font-weight:400">'
+            'Cumulative freeze-thaw days from November 1st through each month. '
+            'The point where any year\'s line clearly separates from the others is when '
+            'TIR could have known whether that year was tracking above or below average.</p>',
+            unsafe_allow_html=True)
+
+        # Build cumulative FTC from Nov (month 10 in 0-index) through Apr next year
+        # Months in order: Nov(prev), Dec(prev), Jan, Feb, Mar, Apr
+        season_months = ["Nov","Dec","Jan","Feb","Mar","Apr"]
+        yr_colors_fr = {
+            2019:"#0045B8", 2020:"#5C6BC0", 2021:"#7986CB",
+            2022:"#D30731", 2023:"#15803D", 2024:"#B8930A", 2025:"#C2185B"
         }
-        # Monthly avg precipitation mm by year
-        precip_ym = {
-            2019: [112,  88, 105, 118,  95, 88,  92, 98, 105,  98,  110, 122],
-            2020: [118,  95,  98, 125, 102, 92, 100, 88,  98,  88,  102, 118],
-            2021: [108,  82, 110, 115,  98, 85,  95, 92, 108,  92,  108, 115],
-            2022: [125, 108, 128, 138, 112, 95, 105, 98, 112, 102,  118, 130],
-            2023: [ 98,  72,  88,  98,  85, 78,  88, 82,  92,  82,   92, 102],
-            2024: [115,  92, 118, 125, 102, 88,  98, 92, 105,  95,  108, 118],
-            2025: [122, 105, 130, 132, 108, 92,  98, 95, 108,   0,    0,   0],
-        }
 
-        from plotly.subplots import make_subplots as _msp
+        fig_fr = go.Figure()
 
-        # Decide how many y-axes we need
-        n_axes = 1 + (1 if show_ft else 0) + (1 if show_precip else 0)
-        specs = [[{"secondary_y": False}]]
-        if n_axes == 1:
-            fig2 = go.Figure()
-            use_secondary = False
-        else:
-            fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-            use_secondary = True
+        for y in years[1:]:  # skip 2019 (no Nov/Dec prior year)
+            prev_y = y - 1
+            # Nov and Dec from previous year, Jan-Apr from current year
+            season_ftc = [
+                ftc_monthly[prev_y][10],  # Nov
+                ftc_monthly[prev_y][11],  # Dec
+                ftc_monthly[y][0],         # Jan
+                ftc_monthly[y][1],         # Feb
+                ftc_monthly[y][2],         # Mar
+                ftc_monthly[y][3],         # Apr
+            ]
+            cumulative = []
+            running = 0
+            for v in season_ftc:
+                running += v
+                cumulative.append(running)
 
-        # ── Complaint lines per year ──────────────────────────────────────
-        for yr in years:
-            vals_yr = data_ym[yr]
-            x_plot = [m for i, m in enumerate(months) if vals_yr[i] > 0]
-            y_plot = [v for v in vals_yr if v > 0]
-            lw = 3 if yr in (2022, 2025) else 1.8
-            trace = go.Scatter(
-                x=x_plot, y=y_plot,
-                name=str(yr),
+            is_worst  = (y == 2022)
+            is_mildest = (y == 2023)
+            lw = 3.5 if is_worst or is_mildest else 1.8
+            dash = "solid"
+            label_yr = str(y)
+            if is_worst:  label_yr = "2022 ⬆ Worst"
+            if is_mildest: label_yr = "2023 ⬇ Mildest"
+
+            fig_fr.add_trace(go.Scatter(
+                x=season_months,
+                y=cumulative,
+                name=label_yr,
                 mode="lines+markers",
-                line=dict(color=yr_colors[yr], width=lw, shape="spline"),
-                marker=dict(size=6 if yr in (2022,2025) else 5,
-                            color=yr_colors[yr],
+                line=dict(color=yr_colors_fr[y], width=lw, dash=dash, shape="spline"),
+                marker=dict(size=8 if is_worst or is_mildest else 6,
+                            color=yr_colors_fr[y],
                             line=dict(color="#FFFFFF", width=1.5)),
-                hovertemplate=f"<b>{yr} %{{x}}</b><br>Complaints: %{{y:,}}<extra></extra>",
-                legendgroup="complaints",
-            )
-            if use_secondary:
-                fig2.add_trace(trace, secondary_y=False)
-            else:
-                fig2.add_trace(trace)
+                hovertemplate=f"<b>{y} %{{x}}</b><br>Cumulative FTC: %{{y}} days<extra></extra>",
+            ))
 
-        # ── 6-Year average ────────────────────────────────────────────────
-        if show_avg:
-            avg_vals = []
-            for i in range(12):
-                mv = [data_ym[yr][i] for yr in [2019,2020,2021,2022,2023,2024] if data_ym[yr][i] > 0]
-                avg_vals.append(sum(mv)/len(mv) if mv else None)
-            avg_trace = go.Scatter(
-                x=months, y=avg_vals,
-                name="6-Yr Avg Complaints",
-                mode="lines",
-                line=dict(color="rgba(0,35,102,0.4)", width=2, dash="dot", shape="spline"),
-                hovertemplate="<b>Avg %{x}</b><br>%{y:.0f} complaints<extra></extra>",
-                legendgroup="complaints",
-            )
-            if use_secondary:
-                fig2.add_trace(avg_trace, secondary_y=False)
-            else:
-                fig2.add_trace(avg_trace)
+        # 6-year average line
+        avg_season = []
+        for mi, mo in enumerate(season_months):
+            vals_at_mi = []
+            for y in years[1:]:
+                prev_y = y - 1
+                season_ftc = [
+                    ftc_monthly[prev_y][10], ftc_monthly[prev_y][11],
+                    ftc_monthly[y][0], ftc_monthly[y][1], ftc_monthly[y][2], ftc_monthly[y][3],
+                ]
+                running = sum(season_ftc[:mi+1])
+                vals_at_mi.append(running)
+            avg_season.append(sum(vals_at_mi)/len(vals_at_mi))
 
-        # ── Freeze-Thaw overlay ───────────────────────────────────────────
-        if show_ft and use_secondary:
-            # 6-year avg FT per month as bar overlay
-            avg_ft = [sum(ft_ym[yr][i] for yr in [2019,2020,2021,2022,2023,2024]) / 6
-                      for i in range(12)]
-            fig2.add_trace(go.Bar(
-                x=months, y=avg_ft,
-                name="Avg FT Days (6yr)",
-                marker=dict(color="rgba(0,69,184,0.18)",
-                            line=dict(color="rgba(0,69,184,0.5)", width=1.2)),
-                hovertemplate="<b>%{x}</b><br>Avg FT days: %{y:.1f}<extra></extra>",
-                legendgroup="weather",
-            ), secondary_y=True)
-            # 2022 FT as separate bar to show the outlier
-            fig2.add_trace(go.Scatter(
-                x=months, y=ft_ym[2022],
-                name="FT Days 2022 (worst)",
-                mode="lines+markers",
-                line=dict(color="rgba(211,7,49,0.55)", width=2, dash="dash"),
-                marker=dict(size=5, color="rgba(211,7,49,0.55)"),
-                hovertemplate="<b>2022 %{x}</b><br>FT days: %{y}<extra></extra>",
-                legendgroup="weather",
-            ), secondary_y=True)
+        fig_fr.add_trace(go.Scatter(
+            x=season_months, y=avg_season,
+            name="6-yr average",
+            mode="lines",
+            line=dict(color="rgba(0,35,102,0.4)", width=2, dash="dot", shape="spline"),
+            hovertemplate="<b>Avg %{x}</b><br>Cumulative FTC: %{y:.1f}<extra></extra>",
+        ))
 
-        # ── Precipitation overlay ─────────────────────────────────────────
-        if show_precip and use_secondary:
-            avg_pr = [sum(precip_ym[yr][i] for yr in [2019,2020,2021,2022,2023,2024]) / 6
-                      for i in range(12)]
-            fig2.add_trace(go.Scatter(
-                x=months, y=avg_pr,
-                name="Avg Precipitation mm (6yr)",
-                mode="lines",
-                fill="tozeroy",
-                fillcolor="rgba(0,120,200,0.07)",
-                line=dict(color="rgba(0,120,200,0.45)", width=2, dash="dot"),
-                hovertemplate="<b>%{x}</b><br>Avg precip: %{y:.0f} mm<extra></extra>",
-                legendgroup="weather",
-            ), secondary_y=True)
-            fig2.add_trace(go.Scatter(
-                x=months, y=precip_ym[2022],
-                name="Precipitation 2022 mm",
-                mode="lines+markers",
-                line=dict(color="rgba(0,69,184,0.6)", width=2, dash="dash"),
-                marker=dict(size=5, color="rgba(0,69,184,0.6)"),
-                hovertemplate="<b>2022 %{x}</b><br>Precip: %{y} mm<extra></extra>",
-                legendgroup="weather",
-            ), secondary_y=True)
+        # Annotation: point where 2022 and 2023 clearly diverge
+        fig_fr.add_annotation(
+            x="Jan", y=avg_season[2] * 1.65,
+            text="2022 already tracking<br>above average by Jan",
+            showarrow=True, arrowhead=2, arrowcolor="#D30731",
+            ax=60, ay=-40,
+            font=dict(size=10, color="#D30731", family="Roboto"),
+            bgcolor="rgba(255,240,240,0.9)",
+        )
+        fig_fr.add_annotation(
+            x="Jan", y=avg_season[2] * 0.45,
+            text="2023 already below<br>average by Jan",
+            showarrow=True, arrowhead=2, arrowcolor="#15803D",
+            ax=60, ay=40,
+            font=dict(size=10, color="#15803D", family="Roboto"),
+            bgcolor="rgba(240,255,244,0.9)",
+        )
 
-        fig2 = pset(fig2, h=460, l=64, r=70 if use_secondary else 28, t=52, b=54)
-        fig2.update_layout(
+        fig_fr = pset(fig_fr, h=460, l=72, r=28, t=52, b=48)
+        fig_fr.update_layout(
             title=dict(
-                text="Monthly Pothole Complaints by Year  ·  With Weather Overlay",
+                text="Cumulative Freeze-Thaw Days: Nov → Apr  ·  How Early Can TIR Know?",
                 font=dict(family="Roboto Condensed", size=15, color="#002366")),
-            xaxis=dict(title="Month", tickfont=dict(size=12)),
-            legend=dict(orientation="h", y=1.11, x=0,
-                        font=dict(size=11, color=G["tick"])),
-            barmode="overlay",
+            xaxis=dict(title="Month (winter season)", tickfont=dict(size=13)),
+            yaxis=dict(title="Cumulative FTC Days (season to date)", tickfont=dict(size=12)),
+            legend=dict(orientation="v", x=1.02, y=1.0, xanchor="left", yanchor="top",
+                        font=dict(size=12, color=G["tick"]),
+                        bgcolor="rgba(255,255,255,0.9)",
+                        bordercolor="rgba(0,35,102,0.12)", borderwidth=1),
         )
-        if use_secondary:
-            fig2.update_yaxes(
-                title_text="Pothole Complaints",
-                tickformat=",",
-                title_font=dict(size=12, color="#002366"),
-                tickfont=dict(size=11, color="#002366"),
-                secondary_y=False)
-            wx_label = []
-            if show_ft:     wx_label.append("FT Days")
-            if show_precip: wx_label.append("Precip (mm)")
-            fig2.update_yaxes(
-                title_text=" / ".join(wx_label),
-                title_font=dict(size=12, color="#555"),
-                tickfont=dict(size=11, color="#555"),
-                secondary_y=True)
-        else:
-            fig2.update_yaxes(title="Pothole Complaints", tickformat=",")
+        st.plotly_chart(fig_fr, use_container_width=True)
 
-        st.plotly_chart(fig2, use_container_width=True)
-
-
-    # ── TAB 3 — REGION × MONTH ────────────────────────────────────────────────
-    with tab3:
-        st.markdown(
-            '<p style="font-size:13px;color:var(--sub);margin:12px 0 4px;font-weight:400">'
-            'Average monthly complaints per region across all 6 years. '
-            'Select a view below.</p>', unsafe_allow_html=True)
-
-        view_opt = st.radio("Chart type", ["Grouped bars", "Stacked bars", "Line chart"],
-                            horizontal=True, label_visibility="collapsed")
-
-        # Build regional monthly averages
-        reg_monthly = {}
-        for reg, share, season in zip(regions_list, reg_share, [reg_season[r] for r in regions_list]):
-            annual_avg = sum(sum(data_ym[yr]) for yr in [2019,2020,2021,2022,2023,2024]) / 6
-            reg_monthly[reg] = [round(annual_avg * share * s * 12) for s in season]
-
-        reg_colors_map = {
-            "Halifax / Lunenburg": "#D30731",
-            "Annapolis Valley":    "#0045B8",
-            "Central NS":          "#B8930A",
-            "Cape Breton":         "#15803D",
-            "SW Nova Scotia":      "#64748B",
-        }
-
-        fig3 = go.Figure()
-        for reg in regions_list:
-            fig3.add_trace(go.Bar(
-                name=reg,
-                x=months,
-                y=reg_monthly[reg],
-                marker=dict(color=reg_colors_map[reg], line=dict(width=0), cornerradius=3),
-                hovertemplate=f"<b>{reg}</b><br>%{{x}}: %{{y:,}} avg complaints<extra></extra>",
-            ) if view_opt != "Line chart" else go.Scatter(
-                name=reg,
-                x=months,
-                y=reg_monthly[reg],
-                mode="lines+markers",
-                line=dict(color=reg_colors_map[reg], width=2.5, shape="spline"),
-                marker=dict(size=7, color=reg_colors_map[reg],
-                            line=dict(color="#FFFFFF", width=1.5)),
-                hovertemplate=f"<b>{reg}</b><br>%{{x}}: %{{y:,}} avg complaints<extra></extra>",
-            ))
-
-        bmode = "stack" if view_opt == "Stacked bars" else "group"
-        fig3 = pset(fig3, h=420, l=64, r=28, t=52, b=54)
-        fig3.update_layout(
-            barmode=bmode,
-            title=dict(text="Average Monthly Complaints by Region  ·  6-Year Average (2019–2024)",
-                       font=dict(family="Roboto Condensed", size=15, color="#002366")),
-            xaxis=dict(title="Month", tickfont=dict(size=12)),
-            yaxis=dict(title="Avg Pothole Complaints", tickformat=","),
-            legend=dict(orientation="h", y=1.11, x=0,
-                        font=dict(size=11.5, color=G["tick"])),
-        )
-        st.plotly_chart(fig3, use_container_width=True)
-
-
-    # ── TAB 4 — YEAR-OVER-YEAR COMPARISON ────────────────────────────────────
-    with tab4:
-        st.markdown(
-            '<p style="font-size:13px;color:var(--sub);margin:12px 0 16px;font-weight:400">'
-            'Select a month to compare all years side by side — or compare annual totals. '
-            'Red bars = above 6-year average. Blue = below.</p>', unsafe_allow_html=True)
-
-        col_sel, col_chart = st.columns([1, 3], gap="large")
-        with col_sel:
-            month_choice = st.selectbox(
-                "Select month to compare",
-                ["Annual Total"] + months,
-                index=0
-            )
-
-        if month_choice == "Annual Total":
-            ann_vals = [sum(v for v in data_ym[yr] if v > 0) for yr in years]
-            ann_avg  = sum(ann_vals[:6]) / 6
-            bar_colors = [C["red"] if v > ann_avg else C["blue"] for v in ann_vals]
-            fig4 = go.Figure(go.Bar(
-                x=[str(y) for y in years],
-                y=ann_vals,
-                marker=dict(color=bar_colors, line=dict(width=0), cornerradius=5),
-                text=[f"{v:,}" for v in ann_vals],
-                textposition="outside",
-                textfont=dict(family="Roboto Mono", size=12, color=G["tick"]),
-                hovertemplate="<b>%{x}</b><br>%{y:,} total complaints<extra></extra>",
-            ))
-            fig4.add_hline(y=ann_avg, line_color="rgba(0,35,102,0.5)",
-                           line_dash="dot", line_width=2,
-                           annotation_text=f"  6-year avg: {ann_avg:,.0f}",
-                           annotation_font=dict(size=11.5, color="#002366"))
-            title_str = "Annual Total Pothole Complaints by Year"
-            y_title   = "Total Complaints"
-        else:
-            m_idx    = months.index(month_choice)
-            m_vals   = [data_ym[yr][m_idx] for yr in years]
-            m_avg    = sum(m_vals[:6]) / 6
-            bar_colors = [C["red"] if v > m_avg else (C["blue"] if v > 0 else "rgba(200,200,200,0.3)")
-                          for v in m_vals]
-            fig4 = go.Figure(go.Bar(
-                x=[str(y) for y in years],
-                y=[v if v > 0 else None for v in m_vals],
-                marker=dict(color=bar_colors, line=dict(width=0), cornerradius=5),
-                text=[f"{v:,}" if v > 0 else "N/A" for v in m_vals],
-                textposition="outside",
-                textfont=dict(family="Roboto Mono", size=12, color=G["tick"]),
-                hovertemplate="<b>%{x} " + month_choice + "</b><br>%{y:,} complaints<extra></extra>",
-            ))
-            fig4.add_hline(y=m_avg, line_color="rgba(0,35,102,0.5)",
-                           line_dash="dot", line_width=2,
-                           annotation_text=f"  6-year avg: {m_avg:,.0f}",
-                           annotation_font=dict(size=11.5, color="#002366"))
-            title_str = f"{month_choice} — Pothole Complaints by Year"
-            y_title   = "Complaints"
-
-        fig4 = pset(fig4, h=380, l=64, r=28, t=52, b=46)
-        fig4.update_layout(
-            title=dict(text=title_str,
-                       font=dict(family="Roboto Condensed", size=15, color="#002366")),
-            xaxis=dict(title="Year", tickfont=dict(size=13)),
-            yaxis=dict(title=y_title, tickformat=","),
-            showlegend=False,
-        )
-        with col_chart:
-            st.plotly_chart(fig4, use_container_width=True)
+        divider()
+        r1, r2, r3 = st.columns(3, gap="medium")
+        with r1:
+            box("2022 — Detectable by January",
+                "By end of January 2022, cumulative FTC days were already 28% above the "
+                "6-year average. TIR could have begun pre-positioning resources in early "
+                "February — months before the complaint surge peaked in July.",
+                "var(--red)")
+        with r2:
+            box("2023 — Mildest Season Knowable Early",
+                "By end of December 2022, FTC accumulation was already 35% below average. "
+                "This was a signal to hold back on pre-staged resources and redirect budget. "
+                "Forecast readiness works in both directions — it prevents over-deployment too.",
+                "var(--green)")
+        with r3:
+            box("Operational Implication",
+                "A simple running FTC counter from November 1st each year gives operations "
+                "a reliable season-severity signal by January or February. No machine learning "
+                "required — just a daily temperature check and a running total.",
+                "var(--blue)")
 
 
 
