@@ -1,0 +1,2 @@
+alert_threshold,surge_threshold_pct,surge_threshold_val,n_alert_days,n_surge_after_alert,precision,false_positive_rate,baseline_surge_rate,lift_over_baseline
+FTC_14d >= 5,75,22.0,723,280,0.3873,0.6127,0.2459,1.575

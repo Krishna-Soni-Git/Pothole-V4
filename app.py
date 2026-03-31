@@ -1,11 +1,13 @@
 """
 NS Pothole Freeze-Thaw Analysis · v5 — Professional Edition
 Run: streamlit run app.py
-Deps: pip install streamlit plotly
+Deps: pip install streamlit plotly pandas
 """
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import pandas as pd
+import os
 
 st.set_page_config(
     page_title="NS Pothole Analysis",
@@ -173,6 +175,103 @@ html, body, [class*="css"] {
 ::-webkit-scrollbar-thumb:hover { background: #002366; }
 </style>
 """, unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LIVE DATA LOADING
+# Reads CSV outputs produced by 02_analysis.py when available.
+# Falls back to representative hardcoded values if CSVs are missing.
+# Re-run `python 02_analysis.py` to refresh all values.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_OUTPUTS = "outputs"
+
+@st.cache_data(ttl=3600)
+def _load_outputs():
+    """Load all generated CSVs into a dict. Keys are None if file missing."""
+    def _read(filename):
+        path = os.path.join(_OUTPUTS, filename)
+        try:
+            return pd.read_csv(path) if os.path.exists(path) else None
+        except Exception:
+            return None
+
+    corr        = _read("correlation_table.csv")
+    regional    = _read("regional_results.csv")
+    lag_stats   = _read("lag_window_summary_stats.csv")
+    lag_full    = _read("lag_window_summary.csv")
+    alert_prec  = _read("alert_precision.csv")
+    seas_check  = _read("seasonal_adjustment_check.csv")
+    merged_path = "Data/NS_Project_Merged_FIXED.csv"
+
+    annual_counts = None
+    total_records = None
+    total_potholes = None
+    if os.path.exists(merged_path):
+        try:
+            df = pd.read_csv(merged_path, usecols=["Date", "Category Shortcode"],
+                             low_memory=False)
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df["Year"] = df["Date"].dt.year
+            pot = df[df["Category Shortcode"] == "TCC-POTHOLE"]
+            annual_counts  = pot.groupby("Year").size().to_dict()
+            total_records  = len(df)
+            total_potholes = len(pot)
+        except Exception:
+            pass
+
+    return {
+        "corr":           corr,
+        "regional":       regional,
+        "lag_stats":      lag_stats,
+        "lag_full":       lag_full,
+        "alert_prec":     alert_prec,
+        "seas_check":     seas_check,
+        "annual_counts":  annual_counts,
+        "total_records":  total_records,
+        "total_potholes": total_potholes,
+        "data_available": any(x is not None for x in [corr, regional, annual_counts]),
+    }
+
+_live = _load_outputs()
+
+# ── Resolve key values: live first, hardcoded fallback ───────────────────────
+_ANNUAL_FALLBACK = {2019: 4784, 2020: 4009, 2021: 4118,
+                    2022: 5700, 2023: 3299, 2024: 4604, 2025: 5582}
+ANNUAL_COUNTS   = _live["annual_counts"]  or _ANNUAL_FALLBACK
+TOTAL_RECORDS   = f"{_live['total_records']:,}"   if _live["total_records"]  else "391,795"
+TOTAL_POTHOLES  = f"{_live['total_potholes']:,}"  if _live["total_potholes"] else "32,096"
+POTHOLE_PCT     = (f"{100*_live['total_potholes']/_live['total_records']:.1f} %"
+                   if _live["total_records"] and _live["total_potholes"] else "8.2 %")
+
+# Best lag info — from lag_window_summary_stats.csv or hardcoded default
+_ls = _live["lag_stats"]
+BEST_LAG_DAY   = int(_ls["best_lag_day"].iloc[0])  if _ls is not None and len(_ls) else 5
+BEST_LAG_R     = float(_ls["best_r"].iloc[0])      if _ls is not None and len(_ls) else -0.081
+BEST_LAG_PBONF = float(_ls["best_p_bonferroni"].iloc[0]) if _ls is not None and len(_ls) else 0.042
+SIG_LAG_MIN    = int(_ls["sig_lag_min"].iloc[0])   if _ls is not None and len(_ls) and pd.notna(_ls["sig_lag_min"].iloc[0]) else 4
+SIG_LAG_MAX    = int(_ls["sig_lag_max"].iloc[0])   if _ls is not None and len(_ls) and pd.notna(_ls["sig_lag_max"].iloc[0]) else 7
+
+# Alert precision info
+_ap = _live["alert_prec"]
+ALERT_PRECISION    = float(_ap["precision"].iloc[0])          if _ap is not None and len(_ap) else None
+ALERT_FALSE_POS    = float(_ap["false_positive_rate"].iloc[0]) if _ap is not None and len(_ap) else None
+ALERT_LIFT         = float(_ap["lift_over_baseline"].iloc[0])  if _ap is not None and len(_ap) else None
+ALERT_N            = int(_ap["n_alert_days"].iloc[0])          if _ap is not None and len(_ap) else None
+
+# Seasonal adjustment result
+_sc = _live["seas_check"]
+if _sc is not None and len(_sc):
+    _peak_adj = _sc.loc[_sc["r_adj"].abs().idxmax()]
+    ADJ_PEAK_LAG = int(_peak_adj["lag"])
+    ADJ_PEAK_R   = float(_peak_adj["r_adj"])
+else:
+    ADJ_PEAK_LAG, ADJ_PEAK_R = 5, -0.062   # representative fallback
+
+# Sidebar data-status indicator
+if _live["data_available"]:
+    st.sidebar.caption("✅ Live analysis outputs loaded.")
+else:
+    st.sidebar.caption("ℹ️ Using representative values. Run `02_analysis.py` to load live data.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE REGISTRY
@@ -377,19 +476,19 @@ if S == 0:
         '</h1>'
         '<p style="font-size:15px;color:var(--sub);line-height:1.85;max-width:620px;'
         'font-weight:400;margin:0 0 30px">'
-        'A 6-year analysis of <strong style="color:var(--text);font-weight:500">391,795 service '
-        'records</strong> and daily weather from 5 ECCC stations reveals a consistent '
-        '<strong style="color:var(--red);font-weight:500">5-day window</strong> between '
+        f'A 6-year analysis of <strong style="color:var(--text);font-weight:500">{TOTAL_RECORDS} service '
+        f'records</strong> and daily weather from 5 ECCC stations reveals a consistent '
+        f'<strong style="color:var(--red);font-weight:500">{SIG_LAG_MIN}–{SIG_LAG_MAX}-day window</strong> between '
         'freeze-thaw events and pothole complaint surges.</p>'
         '<div style="width:48px;height:3px;background:#FDD54E;border-radius:2px;margin-top:4px"></div>'
         '</div>', unsafe_allow_html=True)
 
     # KPI row
     k1, k2, k3, k4 = st.columns(4, gap="medium")
-    with k1: kpi("Service Records", "391,795", "NS TIR · 2019–2025", border_color="var(--border)")
-    with k2: kpi("Pothole Complaints","32,096", "8.2 % of all records", "var(--red)", "var(--red-bdr)")
-    with k3: kpi("Freeze-Thaw Days", "647", "detected across NS", "var(--amber)","var(--amber-bdr)")
-    with k4: kpi("Predictive Window", "5–7 days", "FT event → surge", "var(--blue)", "var(--blue-bdr)")
+    with k1: kpi("Service Records",   TOTAL_RECORDS,   "NS TIR · 2019–2025", border_color="var(--border)")
+    with k2: kpi("Pothole Complaints", TOTAL_POTHOLES,  f"{POTHOLE_PCT} of all records", "var(--red)", "var(--red-bdr)")
+    with k3: kpi("Freeze-Thaw Days",   "647",           "detected across NS",  "var(--amber)","var(--amber-bdr)")
+    with k4: kpi("Predictive Window",  f"{SIG_LAG_MIN}–{SIG_LAG_MAX} days", "FT event → surge", "var(--blue)", "var(--blue-bdr)")
 
     divider()
 
@@ -413,9 +512,9 @@ if S == 0:
     with r:
         label("Data")
         box("Dataset 1 — NS TIR OCC",
-            "391,795 complaint records across 64 supervisor area codes. "
+            f"{TOTAL_RECORDS} complaint records across 64 supervisor area codes. "
             "Provincial highways only. January 2019 – September 2025. "
-            "Pothole complaints represent 8.2 % of all records (32,096).",
+            f"Pothole complaints represent {POTHOLE_PCT} of all records ({TOTAL_POTHOLES}).",
             "var(--amber)")
         box("Dataset 2 — Environment Canada (ECCC)",
             "Daily climate data from 5 verified weather stations: Halifax Stanfield, "
@@ -431,21 +530,25 @@ elif S == 1:
 
     cl, cr = st.columns([1.45, 1], gap="large")
     with cl:
-        years = ["2019","2020","2021","2022","2023","2024","2025"]
-        vals = [4784, 4009, 4118, 5700, 3299, 4604, 5582]
-        clrs = [C["red"] if y in ("2022","2025") else f"rgba(59,130,246,{0.38+i*0.08:.2f})"
-                 for i, y in enumerate(years)]
+        years_sorted = sorted(ANNUAL_COUNTS.keys())
+        yr_labels    = [str(y) for y in years_sorted]
+        vals         = [ANNUAL_COUNTS[y] for y in years_sorted]
+        clrs = ["#EF4444" if y in (2022, 2025) else
+                f"rgba(59,130,246,{0.38 + i * 0.08:.2f})"
+                for i, y in enumerate(years_sorted)]
         fig = go.Figure(go.Bar(
-            x=years, y=vals,
+            x=yr_labels, y=vals,
             marker=dict(color=clrs, line=dict(width=0), cornerradius=5),
             text=[f"{v:,}" for v in vals], textposition="outside",
             textfont=dict(family="Roboto Mono", size=11, color=G["tick"]),
             hovertemplate="<b>%{x}</b> — %{y:,} complaints<extra></extra>",
         ))
-        for yr, lbl in [("2022","Severe FT season"),("2025","Active FT season")]:
-            fig.add_annotation(x=yr, y=vals[years.index(yr)], text=f"↑ {lbl}",
-                               showarrow=False, yshift=27,
-                               font=dict(family="Roboto", size=10.5, color=C["red"]))
+        for yr_int, lbl in [(2022, "Severe FT season"), (2025, "Active FT season")]:
+            if yr_int in ANNUAL_COUNTS:
+                fig.add_annotation(x=str(yr_int), y=ANNUAL_COUNTS[yr_int],
+                                   text=f"↑ {lbl}",
+                                   showarrow=False, yshift=27,
+                                   font=dict(family="Roboto", size=10.5, color=C["red"]))
         fig = pset(fig, h=380, l=52, r=24, t=42, b=46)
         fig.update_layout(
             title=dict(text="Annual Pothole Complaints · 2019–2025",
@@ -674,7 +777,7 @@ elif S == 4:
     # ── Single clean Day 5 callout — NS styled ───────────────────────────
     fig.add_annotation(
         x=5, y=-0.081,
-        text="<b>Day 5 — Peak</b><br>r = −0.081",
+        text=f"<b>Day {BEST_LAG_DAY} — Peak</b><br>r = {BEST_LAG_R:+.3f}",
         showarrow=True, arrowhead=2, arrowwidth=2,
         arrowcolor="#D30731", ax=80, ay=-55, xanchor="left",
         font=dict(family="Roboto", size=12, color="#FFFFFF"),
@@ -707,36 +810,21 @@ elif S == 4:
     # ── KPI strip ─────────────────────────────────────────────────────────
     divider()
     c1, c2, c3, c4 = st.columns(4, gap="small")
-    with c1: kpi("Peak Lag Day",        "Day 5",    "r = −0.081 (weekdays, Bonferroni-corrected p available)",    "var(--red)",   "var(--red-bdr)")
-    with c2: kpi("Spring-Only r",       "−0.143",   "p = 0.0003 (raw, uncorrected) — consistent signal across all years",  "var(--red)",   "var(--red-bdr)")
-    with c3: kpi("Spring Amplification","3×",        "Stronger than the full-year signal","var(--amber)", "var(--amber-bdr)")
-    with c4: kpi("Crew Action Window",  "5–7 days", "Pre-stage before phones ring",      "var(--green)", "var(--green-bdr)")
+    with c1: kpi("Peak Lag Day",
+                  f"Day {BEST_LAG_DAY}",
+                  f"r = {BEST_LAG_R:+.3f}  |  p_bonf = {BEST_LAG_PBONF:.4f}",
+                  "var(--red)", "var(--red-bdr)")
+    with c2: kpi("Spring-Only r",  "−0.143",
+                  "p = 0.0003 (raw, uncorrected) — consistent signal across all years",
+                  "var(--red)", "var(--red-bdr)")
+    with c3: kpi("Spring Amplification", "3×",
+                  "Stronger than the full-year signal",
+                  "var(--amber)", "var(--amber-bdr)")
+    with c4: kpi("Crew Action Window",
+                  f"{SIG_LAG_MIN}–{SIG_LAG_MAX} days",
+                  "Computed significant lag range",
+                  "var(--green)", "var(--green-bdr)")
 
-    # ── Reading guide — clean NS card style ───────────────────────────────
-    divider()
-    g1, g2, g3 = st.columns(3, gap="medium")
-    for col, border, bg, title, body in [
-        (g1, "#D30731", "rgba(211,7,49,0.05)",
-         "What is the red shaded area?",
-         "The red fill shows where freeze-thaw activity is suppressing same-day complaints. "
-         "Roads are cracking but potholes are hidden under snow. "
-         "Complaints are delayed — they arrive 5 days later."),
-        (g2, "#C49A00", "rgba(196,154,0,0.07)",
-         "What is the gold highlighted window?",
-         "Days 5–7 is the operational window. When TIR detects a freeze-thaw event today, "
-         "crews should be pre-staged within this window — before any citizen calls come in."),
-        (g3, "#0045B8", "rgba(0,69,184,0.05)",
-         "Why does the blue line look so different?",
-         "Rain has no consistent lag pattern — it drives complaints on the same day. "
-         "Freeze-thaw is unique: the damage is invisible for 5 days before complaints surge."),
-    ]:
-        col.markdown(
-            f'<div style="background:{bg};border:1px solid rgba(0,35,102,0.12);'
-            f'border-left:4px solid {border};border-radius:6px;padding:16px 15px">'
-            f'<p style="font-family:Roboto Condensed,sans-serif;font-size:13px;'
-            f'font-weight:700;color:{border};margin:0 0 8px">{title}</p>'
-            f'<p style="font-size:12.5px;color:#3A4E72;line-height:1.7;font-weight:400;margin:0">{body}</p>'
-            f'</div>', unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE 5 — PREDICTORS
@@ -1027,39 +1115,7 @@ elif S == 6:
         '</div></div>',
         unsafe_allow_html=True)
 
-    divider()
-    rc1, rc2, rc3, rc4 = st.columns(4, gap="medium")
-    for col, acc, rtitle, stat, body in [
-        (rc1, "var(--red)",
-         "Halifax / Lunenburg",
-         "FTC r = -0.125 (p < 0.001)",
-         "Strongest freeze-thaw signal in NS. 34% of all complaints come from here. "
-         "Trigger: FTC_14d >= 5 days."),
-        (rc2, "var(--blue)",
-         "Annapolis Valley & Central NS",
-         "Precip r = +0.09 to +0.10 (p < 0.001)",
-         "Rainfall-driven — temperature cycling is less severe inland. "
-         "Trigger: 7-day rain >= 25 mm."),
-        (rc3, "var(--amber)",
-         "Cape Breton",
-         "FTC r = -0.041 (p < 0.05, weak)",
-         "Atlantic Ocean moderates temperature swings — fewer complete freeze-thaw cycles. "
-         "Trigger: Precip 7d >= 20 mm."),
-        (rc4, "var(--slate)",
-         "SW Nova Scotia",
-         "No precipitation data available",
-         "Yarmouth A lacks precipitation records. Results are inconclusive — likely a data "
-         "gap, not an absence of the freeze-thaw effect."),
-    ]:
-        bg, bdr = ACC.get(acc, ("var(--surface2)", "var(--border)"))
-        col.markdown(
-            f'<div style="background:{bg};border:1px solid {bdr};border-left:3px solid {acc};'
-            f'border-radius:10px;padding:16px 15px">'
-            f'<p style="font-size:13px;font-weight:600;color:{acc};margin:0 0 5px">{rtitle}</p>'
-            f'<p style="font-family:DM Mono,monospace;font-size:12px;color:var(--text);'
-            f'margin:0 0 10px;font-weight:500">{stat}</p>'
-            f'<p style="font-size:12px;color:var(--sub);line-height:1.7;font-weight:400;margin:0">{body}</p>'
-            f'</div>', unsafe_allow_html=True)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1084,151 +1140,84 @@ elif S == 7:
     sigs  = [p[2] for p in predictors]
     descs = [p[3] for p in predictors]
 
-    chart_col, table_col = st.columns([1.5, 1], gap="large")
+    fig = go.Figure()
+    # Zero line — NS navy
+    fig.add_vline(x=0, line_color="#002366", line_width=1.8)
+    # Light gold band for the spring bar
+    fig.add_hrect(
+        y0="Spring Season (Mar–May)", y1="Spring Season (Mar–May)",
+        fillcolor="rgba(196,154,0,0.08)", line_width=0)
 
-    with chart_col:
-        fig = go.Figure()
-        # Zero line — NS navy
-        fig.add_vline(x=0, line_color="#002366", line_width=1.8)
-        # Light gold band for the spring bar
-        fig.add_hrect(
-            y0="Spring Season (Mar–May)", y1="Spring Season (Mar–May)",
-            fillcolor="rgba(196,154,0,0.08)", line_width=0)
+    # Bars — NS red for significant, light grey for not
+    bar_colors = ["#D30731" if sg else "rgba(100,116,139,0.3)" for sg in sigs]
+    fig.add_trace(go.Bar(
+        x=vals, y=names, orientation="h",
+        marker=dict(color=bar_colors, line=dict(width=0), cornerradius=4),
+        error_x=dict(type="data", array=ci,
+                     color="rgba(0,35,102,0.4)", thickness=2, width=7),
+        customdata=[f"{d}" for d in descs],
+        hovertemplate="<b>%{y}</b><br>+%{x:.2f} complaints/day<br>%{customdata}<extra></extra>",
+        showlegend=False,
+    ))
 
-        # Bars — NS red for significant, light grey for not
-        bar_colors = ["#D30731" if sg else "rgba(100,116,139,0.3)" for sg in sigs]
-        fig.add_trace(go.Bar(
-            x=vals, y=names, orientation="h",
-            marker=dict(color=bar_colors, line=dict(width=0), cornerradius=4),
-            error_x=dict(type="data", array=ci,
-                         color="rgba(0,35,102,0.4)", thickness=2, width=7),
-            customdata=[f"{d}" for d in descs],
-            hovertemplate="<b>%{y}</b><br>+%{x:.2f} complaints/day<br>%{customdata}<extra></extra>",
-            showlegend=False,
-        ))
-
-        # Value labels — clean, right of bar
-        for i, (name, val, sg) in enumerate(zip(names, vals, sigs)):
-            xpos = val + ci[i] + 0.10 if val >= 0 else val - ci[i] - 0.10
-            anchor = "left" if val >= 0 else "right"
-            fig.add_annotation(
-                x=xpos, y=name,
-                text=f"<b>{val:+.2f}</b>",
-                showarrow=False, xanchor=anchor,
-                font=dict(family="Roboto Mono", size=12,
-                          color="#D30731" if sg else "rgba(100,116,139,0.6)"))
-
-        # Spring callout — NS branded
+    # Value labels — clean, right of bar
+    for i, (name, val, sg) in enumerate(zip(names, vals, sigs)):
+        xpos = val + ci[i] + 0.10 if val >= 0 else val - ci[i] - 0.10
+        anchor = "left" if val >= 0 else "right"
         fig.add_annotation(
-            x=4.59, y="Spring Season (Mar–May)",
-            text="Largest effect in the model",
-            showarrow=True, arrowhead=2, arrowcolor="#002366",
-            ax=-10, ay=-40, xanchor="right",
-            font=dict(family="Roboto Condensed", size=12, color="#FFFFFF"),
-            bgcolor="#002366", bordercolor="#002366",
-            borderwidth=0, borderpad=8)
+            x=xpos, y=name,
+            text=f"<b>{val:+.2f}</b>",
+            showarrow=False, xanchor=anchor,
+            font=dict(family="Roboto Mono", size=12,
+                      color="#D30731" if sg else "rgba(100,116,139,0.6)"))
 
-        fig = pset(fig, h=400, l=230, r=90, t=44, b=52)
-        fig.update_layout(
-            title=dict(
-                text="Extra complaints per day — each variable's effect",
-                font=dict(family="Roboto Condensed", size=14, color="#002366")),
-            showlegend=False,
-            xaxis=dict(
-                title="Extra complaints per day  (all other variables held constant)",
-                range=[-1.2, 6.5], tickformat=".1f",
-                title_font=dict(size=12, color="#1A3568"),
-                tickfont=dict(size=11.5, color="#1A3568")),
-            yaxis=dict(tickfont=dict(size=12.5, color="#0D1B3E")))
-        st.plotly_chart(fig, use_container_width=True)
+    # Spring callout — NS branded
+    fig.add_annotation(
+        x=4.59, y="Spring Season (Mar–May)",
+        text="Largest effect in the model",
+        showarrow=True, arrowhead=2, arrowcolor="#002366",
+        ax=-10, ay=-40, xanchor="right",
+        font=dict(family="Roboto Condensed", size=12, color="#FFFFFF"),
+        bgcolor="#002366", bordercolor="#002366",
+        borderwidth=0, borderpad=8)
 
-    with table_col:
-        # Clean NS government-style summary table
-        st.markdown(
-            '<p style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
-            'font-weight:700;letter-spacing:2px;text-transform:uppercase;'
-            'color:#4A6490;margin:0 0 12px">Coefficient Summary</p>',
-            unsafe_allow_html=True)
-
-        rows_html = ""
-        for name, val, sg, desc in predictors:
-            sig_badge = (
-                f'<span style="background:#D30731;color:#fff;font-size:10px;'
-                f'font-weight:700;padding:2px 7px;border-radius:3px;'
-                f'font-family:Roboto Condensed,sans-serif">significant</span>'
-                if sg else
-                f'<span style="background:#E5E9F0;color:#64748B;font-size:10px;'
-                f'padding:2px 7px;border-radius:3px;'
-                f'font-family:Roboto Condensed,sans-serif">not sig.</span>'
-            )
-            rows_html += (
-                f'<tr style="border-bottom:1px solid #E8EDF5">'
-                f'<td style="padding:10px 10px 10px 0;font-size:12.5px;'
-                f'font-weight:{"600" if sg else "400"};color:{"#0D1B3E" if sg else "#64748B"}">'
-                f'{name}</td>'
-                f'<td style="font-family:Roboto Mono,monospace;font-size:13px;'
-                f'color:{"#D30731" if sg else "#94A3B8"};text-align:right;'
-                f'padding:10px 8px;font-weight:{"700" if sg else "400"}">'
-                f'{val:+.2f}</td>'
-                f'<td style="text-align:right;padding:10px 0 10px 4px">'
-                f'{sig_badge}</td>'
-                f'</tr>'
-            )
-        st.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #D0D9E8;'
-            f'border-top:3px solid #0045B8;border-radius:6px;padding:16px 18px">'
-            f'<table style="width:100%;border-collapse:collapse">'
-            f'<tr style="border-bottom:2px solid #0045B8">'
-            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
-            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
-            f'padding:0 10px 8px 0;text-align:left">Variable</th>'
-            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
-            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
-            f'padding:0 8px 8px;text-align:right">Effect</th>'
-            f'<th style="font-family:Roboto Condensed,sans-serif;font-size:10px;'
-            f'font-weight:700;color:#4A6490;text-transform:uppercase;letter-spacing:1.5px;'
-            f'padding:0 0 8px;text-align:right">Status</th></tr>'
-            f'{rows_html}'
-            f'</table>'
-            f'<p style="font-size:11px;color:#64748B;margin:12px 0 0;font-style:italic">'
-            f'Full-model R² = 0.072 (7.2%) — includes Spring Season calendar dummy. Weather-only R² ≈ 3–4%. See coefficient table for details.</p>'
-            f'</div>',
-            unsafe_allow_html=True)
+    fig = pset(fig, h=400, l=230, r=90, t=44, b=52)
+    fig.update_layout(
+        title=dict(
+            text="Extra complaints per day — each variable's effect",
+            font=dict(family="Roboto Condensed", size=14, color="#002366")),
+        showlegend=False,
+        xaxis=dict(
+            title="Extra complaints per day  (all other variables held constant)",
+            range=[-1.2, 6.5], tickformat=".1f",
+            title_font=dict(size=12, color="#1A3568"),
+            tickfont=dict(size=11.5, color="#1A3568")),
+        yaxis=dict(tickfont=dict(size=12.5, color="#0D1B3E")))
+    st.plotly_chart(fig, use_container_width=True)
 
     divider()
-    r1, r2, r3 = st.columns(3, gap="medium")
-    for col, border_c, bg_c, rtitle, body in [
-        (r1, "#D30731", "rgba(211,7,49,0.05)",
-         "Spring dominates everything",
-         "Just being in March–May adds +4.6 complaints per day. All winter damage "
-         "becomes visible simultaneously — the single biggest predictor in the model."),
-        (r2, "#C49A00", "rgba(196,154,0,0.06)",
-         "Why does Freeze-Thaw show negative?",
-         "During freezing, potholes form but stay hidden under snow. "
-         "Calls drop temporarily. The surge arrives 5 days later — "
-         "this is the lag effect, not a true inverse."),
-        (r3, "#0045B8", "rgba(0,69,184,0.05)",
-         "Why R² = 7.2% is acceptable — with an important caveat",
-         "Road age, traffic volume, and pavement condition explain most of the rest. "
-         "Those data are not yet in the model. "
-         "7.2% from weather alone is sufficient for an operational alert trigger."),
-    ]:
-        col.markdown(
-            f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.12);'
-            f'border-left:4px solid {border_c};border-radius:6px;padding:16px 15px">'
-            f'<p style="font-family:Roboto Condensed,sans-serif;font-size:13px;'
-            f'font-weight:700;color:{border_c};margin:0 0 8px">{rtitle}</p>'
-            f'<p style="font-size:12.5px;color:#3A4E72;line-height:1.7;font-weight:400;margin:0">{body}</p>'
-            f'</div>', unsafe_allow_html=True)
+    r1, r2 = st.columns(2, gap="large")
+    with r1:
+        box("Why R² = 7.2% is still operationally useful",
+            "Weather explains only 7.2% of daily variance — road age, traffic volume, and pavement "
+            "condition account for most of the rest. But 7.2% is enough to trigger an alert: "
+            "the direction is reliable and the lag is consistent across all 6 years. "
+            "It is a signal, not a full model.", "var(--blue)")
+    with r2:
+        box("What this model tells operations — precisely",
+            "Five variables are independently significant. Spring Season (+4.59) sets the deployment "
+            "season. FTC 14-day (−0.67) flags active-freeze suppression — the surge is coming in 5 days. "
+            "Snow 7-day (+0.23) and Precip×FTC (+0.11) add precision. "
+            "Rain alone is not significant once the other terms are in the model.", "var(--red)")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE 8 — MONTHLY DEEP-DIVE
 # ══════════════════════════════════════════════════════════════════════════════
 elif S == 8:
-    slide_header("09", "Month-by-Month Breakdown — Every Year, Every Region.",
-                 "Potholes by year × month, region × month, and year-over-year comparison. "
-                 "Use the tabs below to switch views. Hover any bar for exact counts.")
+    slide_header("08", "Month-by-Month Breakdown — Every Year, Every Region.",
+                 "The heatmap and trend lines below let you explore the raw data behind every finding. "
+                 "Hover any cell or point for exact counts.")
 
     # ── Data ─────────────────────────────────────────────────────────────────
     years  = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
@@ -1327,37 +1316,6 @@ elif S == 8:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # Insight cards below heatmap
-        divider()
-        hi1, hi2, hi3, hi4 = st.columns(4, gap="small")
-        for col, border_c, bg_c, title, body_t in [
-            (hi1, "#D30731", "rgba(211,7,49,0.05)",
-             "Worst Cell",
-             "July 2025 — 825 complaints. The peak month of the most active FT season in the dataset, "
-             "combined with the full 5-day lag from a severe spring thaw. "
-             "July 2022 is the second highest at 687 — confirming July as the most volatile month."),
-            (hi2, "#15803D", "rgba(21,128,61,0.05)",
-             "Quietest Cell",
-             "November 2023 — 172 complaints. The mildest freeze-thaw year combined with a "
-             "typically quiet late-autumn month produced the lowest single-month count in the dataset."),
-            (hi3, "#0045B8", "rgba(0,69,184,0.05)",
-             "Most Consistent Month",
-             "July is the peak complaint month in every single year without exception — "
-             "ranging from 398 (2023) to 825 (2025). "
-             "The accumulated winter damage pattern is robust across all 6 years."),
-            (hi4, "#B8930A", "rgba(184,147,10,0.05)",
-             "Spring Dominance",
-             "May through July accounts for approximately 32% of annual complaints in every year. "
-             "The 6-year average shows May–Jul each exceeding 10% of the annual total — "
-             "the highest-priority deployment window for TIR crews."),
-        ]:
-            col.markdown(
-                f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.10);'
-                f'border-left:4px solid {border_c};border-radius:6px;padding:14px 13px">'
-                f'<p style="font-family:Roboto Condensed,sans-serif;font-size:12.5px;'
-                f'font-weight:700;color:{border_c};margin:0 0 7px">{title}</p>'
-                f'<p style="font-size:12px;color:#3A4E72;line-height:1.65;font-weight:400;margin:0">{body_t}</p>'
-                f'</div>', unsafe_allow_html=True)
 
     # ── TAB 2 — MONTHLY TREND BY YEAR ────────────────────────────────────────
     with tab2:
@@ -1529,42 +1487,6 @@ elif S == 8:
 
         st.plotly_chart(fig2, use_container_width=True)
 
-        # ── Weather context cards ─────────────────────────────────────────
-        divider()
-        w1, w2, w3, w4 = st.columns(4, gap="small")
-        for col, border_c, bg_c, title, body_t in [
-            (w1, "#D30731", "rgba(211,7,49,0.05)",
-             "Why 2022 Was the Worst",
-             "2022 had the highest monthly totals of any year from January through December — "
-             "peaking at 687 complaints in July. Its annual total of 5,700 was 26% above the "
-             "6-year average of 4,519. The freeze-thaw overlay shows 2022 also had the highest "
-             "FT day count of any year, directly explaining the elevated complaint volumes."),
-            (w2, "#0045B8", "rgba(0,69,184,0.05)",
-             "FT Days Drive Spring — Not Summer",
-             "The FT overlay peaks Jan–Apr and drops to zero by June. "
-             "Yet complaints peak in July at 576–825 across all years. "
-             "This 2–3 month offset is the lag mechanism made visible: "
-             "FT causes the damage in winter, July reveals it on dry summer roads."),
-            (w3, "#15803D", "rgba(21,128,61,0.05)",
-             "Why 2023 Was the Mildest",
-             "2023 recorded only 3,299 total complaints — 27% below the 6-year average. "
-             "Every single month was below average. July 2023 hit only 398 complaints "
-             "vs the 6-year July average of 574. "
-             "The mildest FT season in the dataset explains both the low winter and summer counts."),
-            (w4, "#B8930A", "rgba(184,147,10,0.05)",
-             "Precipitation Sustains Summer Complaints",
-             "Even after FT events end in May, above-average summer rainfall keeps "
-             "complaints elevated in June–August. Rain infiltrates existing cracks, "
-             "deepens potholes, and makes them visible to drivers. "
-             "Toggle the Precipitation overlay to see the June–August correlation."),
-        ]:
-            col.markdown(
-                f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.10);'
-                f'border-left:4px solid {border_c};border-radius:6px;padding:14px 13px">'
-                f'<p style="font-family:Roboto Condensed,sans-serif;font-size:12.5px;'
-                f'font-weight:700;color:{border_c};margin:0 0 7px">{title}</p>'
-                f'<p style="font-size:12px;color:#3A4E72;line-height:1.65;font-weight:400;margin:0">{body_t}</p>'
-                f'</div>', unsafe_allow_html=True)
 
     # ── TAB 3 — REGION × MONTH ────────────────────────────────────────────────
     with tab3:
@@ -1622,32 +1544,6 @@ elif S == 8:
         )
         st.plotly_chart(fig3, use_container_width=True)
 
-        # Regional insight cards
-        divider()
-        rc1, rc2, rc3 = st.columns(3, gap="medium")
-        for col, border_c, bg_c, title, body_t in [
-            (rc1, "#D30731", "rgba(211,7,49,0.05)",
-             "Halifax Dominates Spring",
-             "Halifax / Lunenburg accounts for 34% of annual complaints but 38–40% of spring complaints. "
-             "Its freeze-thaw sensitivity means it spikes disproportionately in March–May compared to other regions."),
-            (rc2, "#0045B8", "rgba(0,69,184,0.05)",
-             "Annapolis & Central — Rain-Driven Peak",
-             "These two regions peak in June–July and hold elevated levels through August — "
-             "a pattern driven more by sustained rainfall than freeze-thaw events, consistent with their "
-             "positive Precip correlation (r ≈ +0.09 to +0.10)."),
-            (rc3, "#B8930A", "rgba(184,147,10,0.05)",
-             "Cape Breton — Muted Pattern",
-             "Cape Breton shows the flattest seasonal curve of any region. "
-             "Atlantic climate moderation reduces extreme temperature swings, "
-             "resulting in fewer FT cycles and a less pronounced spring surge."),
-        ]:
-            col.markdown(
-                f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.10);'
-                f'border-left:4px solid {border_c};border-radius:6px;padding:14px 13px">'
-                f'<p style="font-family:Roboto Condensed,sans-serif;font-size:12.5px;'
-                f'font-weight:700;color:{border_c};margin:0 0 7px">{title}</p>'
-                f'<p style="font-size:12px;color:#3A4E72;line-height:1.65;font-weight:400;margin:0">{body_t}</p>'
-                f'</div>', unsafe_allow_html=True)
 
     # ── TAB 4 — YEAR-OVER-YEAR COMPARISON ────────────────────────────────────
     with tab4:
@@ -1716,62 +1612,13 @@ elif S == 8:
         with col_chart:
             st.plotly_chart(fig4, use_container_width=True)
 
-        # Summary stats table
-        divider()
-        label("Model improvement opportunities — what would raise predictive power")
-        st.markdown(
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px">',
-            unsafe_allow_html=True)
-
-        improvements = [
-            ("#D30731", "rgba(211,7,49,0.05)",
-             "Add Road Age & Pavement Condition Index",
-             "Currently missing from the model. Road age alone likely explains 15–20% of variance. "
-             "Older pavements crack at 2–3× the rate of newer ones under identical FT conditions. "
-             "Adding PCI data could raise weather-only R² from ~3–4% to 10–15%."),
-            ("#0045B8", "rgba(0,69,184,0.05)",
-             "Add Traffic Volume Data",
-             "High-traffic roads fail faster. Without AADT (Annual Average Daily Traffic) data, "
-             "the model cannot distinguish a FT-damaged highway from a FT-damaged side street. "
-             "Traffic data would sharpen both the correlation analysis and the regression."),
-            ("#15803D", "rgba(21,128,61,0.05)",
-             "Negative Binomial Regression",
-             "OLS on count data can produce negative fitted values and assumes constant variance. "
-             "Negative binomial regression is designed for overdispersed count data like complaint volumes "
-             "and would produce more reliable coefficient estimates and p-values."),
-            ("#B8930A", "rgba(184,147,10,0.05)",
-             "Remove Seasonality Before Correlating",
-             "The current lagged Spearman correlations are computed on raw time series. "
-             "Removing the seasonal component (STL decomposition) before correlating would isolate "
-             "the weather signal from shared winter trends, reducing potential confounding."),
-            ("#5C2D91", "rgba(92,45,145,0.05)",
-             "Station-Level Panel Model",
-             "The current analysis averages all 5 stations into one provincial series. "
-             "A fixed-effects panel model using each station as a separate observation unit "
-             "would preserve regional variation and increase statistical power substantially."),
-            ("#002366", "rgba(0,35,102,0.05)",
-             "Connect Live ECCC Forecast API",
-             "The current system uses historical weather only. Connecting to Environment Canada's "
-             "7-day forecast API would enable real-time alert generation — triggering HIGH/MEDIUM alerts "
-             "automatically based on predicted temperature crossings before they occur."),
-        ]
-        for border_c, bg_c, title, body_t in improvements:
-            st.markdown(
-                f'<div style="background:{bg_c};border:1px solid rgba(0,35,102,0.10);'
-                f'border-left:4px solid {border_c};border-radius:6px;padding:14px 15px">'
-                f'<p style="font-family:Roboto Condensed,sans-serif;font-size:13px;'
-                f'font-weight:700;color:{border_c};margin:0 0 7px">{title}</p>'
-                f'<p style="font-size:12px;color:#3A4E72;line-height:1.68;font-weight:400;margin:0">{body_t}</p>'
-                f'</div>',
-                unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDE 10 — ACTION PLAN
 # ══════════════════════════════════════════════════════════════════════════════
 elif S == 9:
-    slide_header("08", "Three findings. One early-warning system.",
+    slide_header("09", "Three findings. One early-warning system.",
                  "The analysis supports a weather-triggered, regionally-differentiated maintenance "
                  "alert that converts NS TIR from reactive to proactive operations.")
 
@@ -1779,9 +1626,10 @@ elif S == 9:
     with cl:
         label("Core findings")
         findings = [
-            ("var(--red)", "1", "A measurable 5-day lag exists",
-             "Spearman r = −0.081 at Day 5. Spring-only: r = −0.143, p = 0.0003. "
-             "Consistent across all 6 years 2019–2025. Note: p-values are Bonferroni-corrected for multiple testing."),
+            ("var(--red)", "1", "A measurable lag exists",
+             f"Spearman r = {BEST_LAG_R:+.3f} at Day {BEST_LAG_DAY} (p_bonf = {BEST_LAG_PBONF:.4f}). "
+             f"Significant window: Days {SIG_LAG_MIN}–{SIG_LAG_MAX}. Spring-only: r = −0.143. "
+             "Consistent across all 6 years 2019–2025."),
             ("var(--blue)", "2", "Weather variables explain ~3–4% of daily variance",
              "Spring Season calendar dummy (+4.59), FTC 14d (−0.67), and Snow 7d (+0.23) are the dominant "
              "significant OLS predictors. Newey-West HAC standard errors correct for autocorrelation. "
@@ -1826,14 +1674,29 @@ elif S == 9:
                 f'</div>', unsafe_allow_html=True)
 
     divider()
-    c1, c2 = st.columns(2, gap="large")
+    c1, c2, c3 = st.columns(3, gap="large")
     with c1:
-        box("Data Limitations",
-            "Yarmouth A has no precipitation data. Greenwood A has no rain/snow split. "
-            "Weather explains only 7.2% of variance — road age and traffic volume are "
-            "the dominant unmeasured confounders.", "var(--amber)")
+        if ALERT_PRECISION is not None:
+            _prec_txt = (
+                f"HIGH alert (FTC_14d ≥ 5) was followed by an above-normal surge "
+                f"within 5–7 days in {ALERT_PRECISION*100:.0f}% of cases "
+                f"({ALERT_N} alert days). Lift over baseline: {ALERT_LIFT:.1f}×. "
+                f"Seasonal-adjusted lag: r = {ADJ_PEAK_R:+.3f} at Day {ADJ_PEAK_LAG}."
+            )
+        else:
+            _prec_txt = (
+                "Early-warning deployment could cut response time from 5–7 days "
+                "(reactive) to 1–2 days (proactive). Run 02_analysis.py to load "
+                "live alert precision and seasonal adjustment results."
+            )
+        box("Alert Evaluation", _prec_txt, "var(--green)")
     with c2:
-        box("Expected Impact",
-            "Early-warning deployment could reduce average pothole response time from "
-            "5–7 days (reactive) to 1–2 days (proactive). Fewer complaints, lower "
-            "patching cost, measurably better citizen service.", "var(--blue)")
+        box("Data Limitations",
+            "Yarmouth A has no precipitation data. Weather explains only ~3–4% of variance "
+            "(7.2% with Spring dummy). Road age and traffic volume are the dominant unmeasured "
+            "confounders that would raise predictive power.", "var(--amber)")
+    with c3:
+        box("Validation Steps",
+            "① Seasonal-adjustment lag check — see outputs/seasonal_adjustment_check.csv.  "
+            "② Alert precision-recall evaluated — see outputs/alert_precision.csv.  "
+            "③ Connect ECCC 7-day forecast API for real-time alert generation.", "var(--blue)")

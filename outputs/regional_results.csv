@@ -1,0 +1,6 @@
+Region,Station,Precip_Roll7d_r,Precip_Roll7d_p,FTC_14d_r,FTC_14d_p,HDD_14d_r,HDD_14d_p,Pothole_Total
+Halifax / Lunenburg,Halifax_Stanfield,0.0136,0.5018,-0.1248,0.0,-0.1118,0.0,10866
+Annapolis Valley,Greenwood_A,0.0941,0.0,-0.0567,0.0049,-0.0202,0.3169,8623
+SW Nova Scotia,Yarmouth_A,,,-0.0334,0.1125,-0.0184,0.3823,1340
+Cape Breton,Sydney_A,-0.0407,0.0443,-0.0291,0.1506,0.0114,0.5722,4639
+Central NS,Truro,0.1008,0.0,-0.044,0.029,-0.011,0.5862,6148

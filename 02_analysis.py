@@ -40,9 +40,16 @@ try:
     from statsmodels.stats.stattools import durbin_watson
     from statsmodels.regression.linear_model import OLS as sm_OLS
     from statsmodels.tools import add_constant
+    import statsmodels.api as sm
     HAS_STATSMODELS = True
 except ImportError:
     HAS_STATSMODELS = False
+
+try:
+    import statsmodels.discrete.discrete_model as sm_discrete
+    HAS_NEGBIN = True
+except ImportError:
+    HAS_NEGBIN = False
 
 warnings.filterwarnings("ignore")
 os.makedirs("outputs", exist_ok=True)
@@ -196,9 +203,14 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
         if col in daily.columns:
             daily[col] = daily[col].interpolate(method="linear", limit=5)
 
-    # Fill missing precipitation with 0 (no precip reported = trace/none)
+    # Fill missing precipitation with 0 (no precip reported = trace/none).
+    # NOTE: Yarmouth A has no precipitation sensor — its zeros here are imputed,
+    # not observed.  A companion flag column (*_imputed = 1) is added so
+    # downstream steps can filter or weight these rows appropriately.
     for col in ["Total_Precip", "Total_Rain", "Total_Snow"]:
         if col in daily.columns:
+            imputed_col = col + "_imputed"
+            daily[imputed_col] = daily[col].isna().astype(int)
             daily[col] = daily[col].fillna(0)
 
     # ── Calendar flags ────────────────────────────────────────────────────────
@@ -391,55 +403,62 @@ def regression(daily: pd.DataFrame):
     # Weather-only predictors (excluding calendar dummy)
     weather_preds = [p for p in candidate_preds if p != "SpringSeason"]
 
-    preds = [p for p in candidate_preds if p in daily.columns]
-    wpreds = [p for p in weather_preds if p in daily.columns]
+    preds  = [p for p in candidate_preds if p in daily.columns]
+    wpreds = [p for p in weather_preds  if p in daily.columns]
 
     wd = daily[daily["IsWeekday"] == 1].dropna(subset=preds + ["Pothole_Count"]).copy()
     n  = len(wd)
+    y  = wd["Pothole_Count"].values
 
-    def fit_ols(X_mat, y_vec):
-        """OLS with HC3 robust SE (manual implementation)."""
-        beta, _, _, _ = np.linalg.lstsq(X_mat, y_vec, rcond=None)
-        yhat   = X_mat @ beta
-        ss_res = np.sum((y_vec - yhat) ** 2)
-        ss_tot = np.sum((y_vec - y_vec.mean()) ** 2)
-        r2     = 1 - ss_res / ss_tot
-        k      = X_mat.shape[1]
-        e      = y_vec - yhat
-        h      = np.diag(X_mat @ np.linalg.inv(X_mat.T @ X_mat) @ X_mat.T)
-        e_hc3  = e / (1 - h)
-        meat   = (X_mat * (e_hc3 ** 2)[:, None]).T @ X_mat
-        bread  = np.linalg.inv(X_mat.T @ X_mat)
-        cov    = bread @ meat @ bread
-        se     = np.sqrt(np.diag(cov))
-        tv     = beta / se
-        pv     = [2 * (1 - stats.t.cdf(abs(t), df=n - k)) for t in tv]
-        dw     = np.sum(np.diff(e)**2) / np.sum(e**2)
-        return beta, se, tv, pv, r2, dw, e
+    if not HAS_STATSMODELS:
+        # ── Fallback: manual OLS with HC3 robust SE ───────────────────────
+        def fit_ols_manual(X_mat, y_vec):
+            beta, _, _, _ = np.linalg.lstsq(X_mat, y_vec, rcond=None)
+            yhat   = X_mat @ beta
+            ss_res = np.sum((y_vec - yhat) ** 2)
+            ss_tot = np.sum((y_vec - y_vec.mean()) ** 2)
+            r2     = 1 - ss_res / ss_tot
+            k      = X_mat.shape[1]
+            e      = y_vec - yhat
+            h      = np.diag(X_mat @ np.linalg.inv(X_mat.T @ X_mat) @ X_mat.T)
+            e_hc3  = e / (1 - h)
+            meat   = (X_mat * (e_hc3 ** 2)[:, None]).T @ X_mat
+            bread  = np.linalg.inv(X_mat.T @ X_mat)
+            cov    = bread @ meat @ bread
+            se     = np.sqrt(np.diag(cov))
+            tv     = beta / se
+            pv     = [2 * (1 - stats.t.cdf(abs(t), df=n - k)) for t in tv]
+            dw     = np.sum(np.diff(e)**2) / np.sum(e**2)
+            return beta, se, tv, pv, r2, dw
 
-    # ── Full model (with Spring dummy) ────────────────────────────────────────
-    X_full = np.column_stack([np.ones(n)] + [wd[p].values for p in preds])
-    y      = wd["Pothole_Count"].values
-    beta_f, se_f, tv_f, pv_f, r2_full, dw, resid = fit_ols(X_full, y)
+        X_full = np.column_stack([np.ones(n)] + [wd[p].values for p in preds])
+        X_wx   = np.column_stack([np.ones(n)] + [wd[p].values for p in wpreds])
+        beta_f, se_f, tv_f, pv_f, r2_full, dw = fit_ols_manual(X_full, y)
+        _, _, _, _, r2_wx, _                   = fit_ols_manual(X_wx, y)
+        nw_note = "HC3 robust SE (install statsmodels for Newey-West HAC SE)"
 
-    # ── Weather-only model (no Spring dummy) ──────────────────────────────────
-    X_wx = np.column_stack([np.ones(n)] + [wd[p].values for p in wpreds])
-    _, _, _, _, r2_wx, _, _ = fit_ols(X_wx, y)
+    else:
+        # ── Primary path: statsmodels OLS with Newey-West HAC SE ─────────
+        # Using statsmodels directly avoids re-implementing OLS from scratch
+        # (the audit correctly noted that statsmodels was already a dependency).
+        X_sm_full = add_constant(wd[preds].values, has_constant="add")
+        X_sm_wx   = add_constant(wd[wpreds].values, has_constant="add")
 
-    # ── Newey-West SE if statsmodels available ────────────────────────────────
-    nw_note = "HC3 robust SE (install statsmodels for Newey-West HAC SE)"
-    if HAS_STATSMODELS:
-        try:
-            import statsmodels.api as sm
-            X_sm   = add_constant(wd[preds].values)
-            res_sm = sm_OLS(y, X_sm).fit(cov_type='HAC',
-                                          cov_kwds={'maxlags': 5, 'use_correction': True})
-            se_f   = res_sm.bse
-            tv_f   = res_sm.tvalues
-            pv_f   = res_sm.pvalues
-            nw_note = "Newey-West HAC robust SE (maxlags=5) — corrects for autocorrelation"
-        except Exception as ex:
-            print(f"  Newey-West failed ({ex}), using HC3 instead")
+        res_full = sm_OLS(y, X_sm_full).fit(
+            cov_type="HAC", cov_kwds={"maxlags": 5, "use_correction": True}
+        )
+        res_wx = sm_OLS(y, X_sm_wx).fit()
+
+        beta_f  = res_full.params
+        se_f    = res_full.bse
+        tv_f    = res_full.tvalues
+        pv_f    = res_full.pvalues
+        r2_full = res_full.rsquared
+        r2_wx   = res_wx.rsquared
+
+        resid = res_full.resid
+        dw    = np.sum(np.diff(resid)**2) / np.sum(resid**2)
+        nw_note = "Newey-West HAC robust SE (maxlags=5) — corrects for autocorrelation"
 
     reg_df = pd.DataFrame({
         "Variable":    ["Intercept"] + preds,
@@ -457,6 +476,39 @@ def regression(daily: pd.DataFrame):
           f"({'autocorrelation present' if dw < 1.5 else 'mild autocorrelation' if dw < 2.5 else 'negative autocorr'})")
     print(f"  N (weekdays)                       : {n:,}")
     print("\n" + reg_df.to_string(index=False))
+
+    # ── Negative Binomial regression (recommended for count data) ────────
+    # The audit flagged OLS on count data as suboptimal because:
+    #   - Pothole counts are non-negative integers (OLS can predict negatives)
+    #   - Count data is typically overdispersed (violates OLS homoskedasticity)
+    # Negative binomial is the standard model for overdispersed count data.
+    if HAS_STATSMODELS:
+        print("\n--- Negative Binomial Regression (recommended for count data) ---")
+        try:
+            X_nb = add_constant(wd[preds].values, has_constant="add")
+            nb_model = sm_discrete.NegativeBinomial(y, X_nb)
+            nb_res   = nb_model.fit(method="bfgs", maxiter=200, disp=False)
+
+            nb_df = pd.DataFrame({
+                "Variable":     ["Intercept"] + preds,
+                "Coefficient":  np.round(nb_res.params,  4),
+                "Std_Error":    np.round(nb_res.bse,      4),
+                "Z_Stat":       np.round(nb_res.tvalues,  3),
+                "P_Value":      np.round(nb_res.pvalues,  4),
+                "IRR":          np.round(np.exp(nb_res.params), 4),  # incidence rate ratios
+            })
+            nb_df["Significant"] = nb_df["P_Value"] < 0.05
+            print(f"  Pseudo-R²  (McFadden): {nb_res.prsquared:.4f}")
+            print(f"  AIC                  : {nb_res.aic:.2f}")
+            print(f"  Log-likelihood       : {nb_res.llf:.2f}")
+            print("\n  IRR = Incidence Rate Ratio (exp(coef)): "
+                  "multiplicative effect on expected complaint count")
+            print(nb_df.to_string(index=False))
+            nb_df.to_csv("outputs/negbin_results.csv", index=False)
+            print("\n  Saved: outputs/negbin_results.csv")
+        except Exception as ex:
+            print(f"  Negative Binomial fit failed: {ex}")
+            print("  Falling back to OLS results only.")
 
     return reg_df, r2_full, r2_wx, dw
 
@@ -525,7 +577,233 @@ def regional(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 6. FIGURES
+# 6. SEASONAL-ADJUSTMENT VALIDATION
+#    Audit finding: shared winter seasonality in both FTC and complaints may
+#    inflate the raw lag correlations. We test this by de-meaning each series
+#    by calendar month before re-running the lag correlogram.
+#    Method: subtract the per-month mean from both Pothole_Count and
+#    Freeze_Thaw (weekdays only). This removes the shared seasonal level
+#    without requiring external libraries beyond pandas/scipy.
+#    Results are compared to the unadjusted values and saved to CSV.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def seasonal_lag_validation(daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    Re-run the 1–21 day lag correlogram on month-demeaned series to check
+    whether the raw lag finding is inflated by shared seasonality.
+
+    Returns a DataFrame with columns:
+        lag, r_raw, p_raw, r_adj, p_adj, r_change
+    Saved to outputs/seasonal_adjustment_check.csv.
+    """
+    print("\nSeasonal-adjustment lag validation (month demeaning)...")
+
+    wd = daily[daily["IsWeekday"] == 1].copy()
+
+    # Month-demean: subtract each variable's per-month mean
+    # This removes the shared seasonal level (e.g. high FTC in Jan AND high
+    # complaints in Jan both get centred), leaving the within-month variation.
+    for col in ["Pothole_Count", "Freeze_Thaw"]:
+        month_mean = wd.groupby("Month")[col].transform("mean")
+        wd[f"{col}_adj"] = wd[col] - month_mean
+
+    lags = list(range(1, 22))
+    rows = []
+
+    for lag in lags:
+        # Raw lag
+        s_raw = wd[["Pothole_Count", "Freeze_Thaw"]].copy()
+        s_raw["ftc_lag"] = s_raw["Freeze_Thaw"].shift(lag)
+        s_raw = s_raw.dropna()
+
+        # Adjusted lag
+        s_adj = wd[["Pothole_Count_adj", "Freeze_Thaw_adj"]].copy()
+        s_adj["ftc_lag_adj"] = s_adj["Freeze_Thaw_adj"].shift(lag)
+        s_adj = s_adj.dropna()
+
+        if len(s_raw) < 30 or len(s_adj) < 30:
+            continue
+
+        r_raw, p_raw = stats.spearmanr(s_raw["Pothole_Count"], s_raw["ftc_lag"])
+        r_adj, p_adj = stats.spearmanr(s_adj["Pothole_Count_adj"], s_adj["ftc_lag_adj"])
+
+        rows.append({
+            "lag":       lag,
+            "r_raw":     round(r_raw, 4),
+            "p_raw":     round(p_raw, 4),
+            "r_adj":     round(r_adj, 4),
+            "p_adj":     round(p_adj, 4),
+            "r_change":  round(r_adj - r_raw, 4),   # positive = adj is stronger
+        })
+
+    result = pd.DataFrame(rows)
+    result.to_csv("outputs/seasonal_adjustment_check.csv", index=False)
+
+    # Print a compact comparison
+    peak_raw = result.loc[result["r_raw"].abs().idxmax()]
+    peak_adj = result.loc[result["r_adj"].abs().idxmax()]
+    print(f"  Raw lag peak   : Day {int(peak_raw['lag'])}  r={peak_raw['r_raw']:+.4f}  p={peak_raw['p_raw']:.4f}")
+    print(f"  Adjusted peak  : Day {int(peak_adj['lag'])}  r={peak_adj['r_adj']:+.4f}  p={peak_adj['p_adj']:.4f}")
+    avg_change = result["r_change"].mean()
+    print(f"  Avg r change (adj − raw): {avg_change:+.4f}  "
+          f"({'signal weakened by seasonality' if avg_change > 0 else 'signal partly driven by seasonality'})")
+    print(f"  Saved: outputs/seasonal_adjustment_check.csv")
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 7. ALERT PRECISION EVALUATION
+#    Audit finding: the 3-tier alert system needs a precision-like check.
+#    We define a HIGH alert as FTC_14d >= 5 (matching the dashboard threshold)
+#    and a "surge" as a week where pothole complaints are above the 75th
+#    percentile. We then compute how often an alert is followed by a surge
+#    within 5–7 days — approximating alert precision.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def alert_precision_eval(daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    Evaluate how often a HIGH alert (FTC_14d >= 5) is followed within
+    5–7 days by an above-normal pothole surge (complaints > 75th percentile).
+
+    Returns a summary DataFrame. Saved to outputs/alert_precision.csv.
+    """
+    print("\nAlert precision evaluation...")
+
+    wd = daily[daily["IsWeekday"] == 1].copy().reset_index(drop=True)
+
+    if "FTC_Roll14d" not in wd.columns or wd["FTC_Roll14d"].isna().all():
+        print("  FTC_Roll14d not available — skipping alert evaluation")
+        return pd.DataFrame()
+
+    # Surge threshold: complaints above 75th percentile of weekday days
+    surge_threshold = wd["Pothole_Count"].quantile(0.75)
+
+    # Forward-looking window: did a surge occur within days 5–7 after alert?
+    # We shift the surge flag backward by 5 days so each alert day aligns with
+    # whether a surge happened in the following 5–7 days.
+    wd["is_surge"]  = (wd["Pothole_Count"] > surge_threshold).astype(int)
+    # Max surge in the 5, 6, 7 day forward window
+    wd["surge_in_5_7d"] = (
+        wd["is_surge"].rolling(3, min_periods=1).max().shift(-7)
+    ).fillna(0).astype(int)
+
+    wd["HIGH_alert"] = (wd["FTC_Roll14d"] >= 5).astype(int)
+
+    n_alerts       = wd["HIGH_alert"].sum()
+    n_surge_follow = wd.loc[wd["HIGH_alert"] == 1, "surge_in_5_7d"].sum()
+    n_no_alert     = (wd["HIGH_alert"] == 0).sum()
+    n_surge_no_alert = wd.loc[wd["HIGH_alert"] == 0, "surge_in_5_7d"].sum()
+
+    precision     = n_surge_follow / n_alerts if n_alerts > 0 else float("nan")
+    base_rate     = wd["is_surge"].mean()
+    false_pos_rate = 1 - precision
+
+    print(f"  Alert threshold        : FTC_14d >= 5 days")
+    print(f"  Surge threshold        : Pothole_Count > {surge_threshold:.1f} (75th pct)")
+    print(f"  Total HIGH alert days  : {int(n_alerts)}")
+    print(f"  Followed by surge 5–7d : {int(n_surge_follow)}  ({precision*100:.1f}% precision)")
+    print(f"  False-positive rate    : {false_pos_rate*100:.1f}%")
+    print(f"  Baseline surge rate    : {base_rate*100:.1f}%  (expected if random)")
+
+    summary = pd.DataFrame([{
+        "alert_threshold":     "FTC_14d >= 5",
+        "surge_threshold_pct": 75,
+        "surge_threshold_val": round(surge_threshold, 2),
+        "n_alert_days":        int(n_alerts),
+        "n_surge_after_alert": int(n_surge_follow),
+        "precision":           round(precision, 4),
+        "false_positive_rate": round(false_pos_rate, 4),
+        "baseline_surge_rate": round(base_rate, 4),
+        "lift_over_baseline":  round(precision / base_rate, 3) if base_rate > 0 else float("nan"),
+    }])
+    summary.to_csv("outputs/alert_precision.csv", index=False)
+    print(f"  Saved: outputs/alert_precision.csv")
+    return summary
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 8. LAG WINDOW SUMMARY
+#    Audit finding: report the significant lag range, not only "Day 5".
+#    Summarises which lags are Bonferroni-significant for FTC and their
+#    r-value distribution. Saved to outputs/lag_window_summary.csv.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def lag_window_summary(daily: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute the full 1–21 day lag correlogram for FTC vs Pothole_Count
+    (weekdays only, effective-N p-values), apply Bonferroni correction,
+    and return a summary of the significant lag window.
+
+    Saved to outputs/lag_window_summary.csv.
+    """
+    print("\nLag window summary...")
+
+    wd      = daily[daily["IsWeekday"] == 1].copy()
+    lags    = list(range(1, 22))
+    n_tests = len(lags)                    # only FTC series for this summary
+    alpha_b = 0.05 / n_tests
+
+    rows = []
+    for lag in lags:
+        s = wd[["Pothole_Count", "Freeze_Thaw"]].copy()
+        s["sh"] = s["Freeze_Thaw"].shift(lag)
+        s = s.dropna()
+        if len(s) < 30:
+            continue
+
+        r, p_raw = stats.spearmanr(s["Pothole_Count"], s["sh"])
+        ne = effective_n(s["Pothole_Count"].values, s["sh"].values)
+        if abs(r) < 1.0 and ne > 2:
+            t_stat = r * np.sqrt((ne - 2) / (1 - r**2))
+            p_eff  = float(2 * (1 - stats.t.cdf(abs(t_stat), df=ne - 2)))
+        else:
+            p_eff = p_raw
+
+        p_bonf = min(p_eff * n_tests, 1.0)
+        rows.append({
+            "lag":           lag,
+            "r":             round(r, 4),
+            "p_raw":         round(p_raw, 4),
+            "p_eff_n":       round(p_eff, 4),
+            "p_bonferroni":  round(p_bonf, 4),
+            "N_eff":         ne,
+            "sig_bonf":      p_bonf < 0.05,
+        })
+
+    df_lags = pd.DataFrame(rows)
+
+    sig = df_lags[df_lags["sig_bonf"]]
+    best_row = df_lags.loc[df_lags["r"].abs().idxmax()]
+
+    summary = {
+        "best_lag_day":        int(best_row["lag"]),
+        "best_r":              float(best_row["r"]),
+        "best_p_bonferroni":   float(best_row["p_bonferroni"]),
+        "n_sig_lags":          int(len(sig)),
+        "sig_lag_min":         int(sig["lag"].min()) if len(sig) else None,
+        "sig_lag_max":         int(sig["lag"].max()) if len(sig) else None,
+        "sig_lag_median":      float(sig["lag"].median()) if len(sig) else None,
+        "sig_r_median":        float(sig["r"].median()) if len(sig) else None,
+        "bonferroni_alpha":    round(alpha_b, 6),
+    }
+
+    # Save both the full table and a one-row summary
+    df_lags.to_csv("outputs/lag_window_summary.csv", index=False)
+    pd.DataFrame([summary]).to_csv("outputs/lag_window_summary_stats.csv", index=False)
+
+    print(f"  Best lag         : Day {summary['best_lag_day']}  "
+          f"r={summary['best_r']:+.4f}  p_bonf={summary['best_p_bonferroni']:.4f}")
+    if summary["n_sig_lags"] > 0:
+        print(f"  Significant window: Days {summary['sig_lag_min']}–{summary['sig_lag_max']}  "
+              f"({summary['n_sig_lags']} lags, median Day {summary['sig_lag_median']:.0f})")
+    else:
+        print("  No Bonferroni-significant lags found at this threshold.")
+    print(f"  Saved: outputs/lag_window_summary.csv + lag_window_summary_stats.csv")
+    return df_lags
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 9. FIGURES
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_lag_curve(daily: pd.DataFrame):
@@ -1061,6 +1339,11 @@ Seasonality note   : Spring Season dummy is a calendar variable, not
     if not reg_results.empty:
         reg_results.to_csv("outputs/regional_results.csv", index=False)
 
+    # ── New audit-required analyses ───────────────────────────────────────
+    seasonal_lag_validation(daily)   # month-demeaned lag check
+    alert_precision_eval(daily)      # HIGH alert precision-recall
+    lag_window_summary(daily)        # significant lag range summary
+
     print("\nGenerating figures...")
     plot_lag_curve(daily)
     plot_seasonal(daily)
@@ -1083,8 +1366,13 @@ OLS R² (weather variables only)        : {r2_wx:.4f}  ({r2_wx*100:.1f}%)
 Durbin-Watson                          : {dw:.3f}
 SE method                              : {"Newey-West HAC" if HAS_STATSMODELS else "HC3 (install statsmodels for HAC)"}
 Figures saved : outputs/01 – 09 PNG files
-Tables saved  : outputs/correlation_table.csv  (incl. Bonferroni p-values)
-               outputs/regional_results.csv
+Tables saved  : outputs/correlation_table.csv         (Bonferroni p-values)
+               outputs/regional_results.csv           (per-station correlations)
+               outputs/negbin_results.csv             (negative binomial, if statsmodels)
+               outputs/seasonal_adjustment_check.csv  (month-demeaned lag comparison)
+               outputs/alert_precision.csv            (HIGH alert precision-recall)
+               outputs/lag_window_summary.csv         (full lag table)
+               outputs/lag_window_summary_stats.csv   (best lag / sig window)
 
 METHODOLOGICAL NOTES FOR REPORTING
 ───────────────────────────────────────────────────────────
@@ -1093,10 +1381,10 @@ METHODOLOGICAL NOTES FOR REPORTING
 2. Bonferroni correction applied — see p_bonferroni column in CSV
 3. Effective N < raw N due to autocorrelation — p-values approximate
 4. Spring Season R² contribution is a calendar effect, not a weather effect
-5. Seasonality was not removed from either series before correlation
-   — shared winter trends may inflate correlation estimates
-6. For formal publication, consider: STL seasonal decomposition,
-   negative binomial regression, or block bootstrap inference
+5. Seasonality check run — see outputs/seasonal_adjustment_check.csv
+   to assess whether the raw lag is inflated by shared seasonal trends
+6. Negative binomial regression run — see outputs/negbin_results.csv
+   for count-data appropriate inference (IRR = incidence rate ratios)
 
 Top 8 predictors (lagged Spearman r, weekdays only):""")
     if not corr_df.empty:

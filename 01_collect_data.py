@@ -304,6 +304,27 @@ def collect_weather(skip_stations: set = None) -> pd.DataFrame:
         # Save cache + print quality summary
         cache_path = f"Data/raw_weather/{label}_daily.csv"
         station_df.to_csv(cache_path, index=False)
+
+        # ── Completeness check: expected rows vs actual rows ──────────────
+        # Expected: one row per calendar day from START_YEAR-01-01 to
+        # END_YEAR-END_MONTH_FINAL-last-day.  Missing months from a mid-run
+        # API failure would show up as a shortfall here.
+        import calendar
+        last_day = calendar.monthrange(END_YEAR, END_MONTH_FINAL)[1]
+        expected_days = (
+            pd.Timestamp(f"{END_YEAR}-{END_MONTH_FINAL:02d}-{last_day}")
+            - pd.Timestamp(f"{START_YEAR}-01-01")
+        ).days + 1
+        actual_days = station_df["Date"].nunique()
+        if actual_days < expected_days * 0.95:
+            print(f"  ⚠  COMPLETENESS WARNING for {label}: "
+                  f"expected ~{expected_days:,} days, got {actual_days:,} "
+                  f"({100*actual_days/expected_days:.1f}%). "
+                  f"Some months may have been dropped by a failed API call.")
+        else:
+            print(f"  ✓  Completeness OK: {actual_days:,} / ~{expected_days:,} days "
+                  f"({100*actual_days/expected_days:.1f}%)")
+
         for col in ["Total_Precip", "Total_Rain", "Total_Snow", "Max_Temp", "Min_Temp"]:
             if col in station_df.columns:
                 pct  = 100 * station_df[col].isna().sum() / len(station_df)
