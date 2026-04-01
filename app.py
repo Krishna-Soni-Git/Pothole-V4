@@ -214,33 +214,74 @@ def _load_outputs():
     seas_check  = _read("seasonal_adjustment_check.csv")
     merged_path = "Data/NS_Project_Merged_FIXED.csv"
 
-    annual_counts = None
-    total_records = None
-    total_potholes = None
+    annual_counts   = None
+    monthly_counts  = None   # {year: [jan_count, ..., dec_count]}
+    monthly_ftc     = None   # {year: [jan_ftc, ..., dec_ftc]} — from merged if FTC_14d col exists
+    total_records   = None
+    total_potholes  = None
+
     if os.path.exists(merged_path):
         try:
-            df = pd.read_csv(merged_path, usecols=["Date", "Category Shortcode"],
-                             low_memory=False)
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-            df["Year"] = df["Date"].dt.year
+            # Load date + category (+ FTC_14d if present) from merged CSV
+            cols_wanted = ["Date", "Category Shortcode"]
+            # Peek at headers to see if FTC col is available
+            _peek = pd.read_csv(merged_path, nrows=0)
+            _ftc_col = next((c for c in _peek.columns
+                             if "FTC" in c.upper() and "14" in c), None)
+            if _ftc_col:
+                cols_wanted.append(_ftc_col)
+
+            df = pd.read_csv(merged_path, usecols=cols_wanted, low_memory=False)
+            df["Date"]  = pd.to_datetime(df["Date"], errors="coerce")
+            df["Year"]  = df["Date"].dt.year
+            df["Month"] = df["Date"].dt.month
             pot = df[df["Category Shortcode"] == "TCC-POTHOLE"]
+
+            # Annual totals
             annual_counts  = pot.groupby("Year").size().to_dict()
             total_records  = len(df)
             total_potholes = len(pot)
+
+            # Monthly complaint counts — {year: list of 12 ints}
+            _mc = (pot.groupby(["Year","Month"]).size()
+                      .unstack(fill_value=0))
+            # Ensure all 12 months present
+            for m in range(1, 13):
+                if m not in _mc.columns:
+                    _mc[m] = 0
+            _mc = _mc[[i for i in range(1, 13)]]
+            monthly_counts = {yr: list(row) for yr, row in _mc.iterrows()}
+
+            # Monthly FTC — if FTC column present in merged file
+            if _ftc_col:
+                # FTC_14d is a daily value; sum per year-month to get total
+                # (represents accumulated FTC exposure in that month)
+                _ftc = (df.dropna(subset=[_ftc_col])
+                          .groupby(["Year","Month"])[_ftc_col].mean()
+                          .unstack(fill_value=0))
+                for m in range(1, 13):
+                    if m not in _ftc.columns:
+                        _ftc[m] = 0
+                _ftc = _ftc[[i for i in range(1, 13)]]
+                monthly_ftc = {yr: [round(v) for v in row]
+                               for yr, row in _ftc.iterrows()}
+
         except Exception:
             pass
 
     return {
-        "corr":           corr,
-        "regional":       regional,
-        "lag_stats":      lag_stats,
-        "lag_full":       lag_full,
-        "alert_prec":     alert_prec,
-        "seas_check":     seas_check,
-        "annual_counts":  annual_counts,
-        "total_records":  total_records,
-        "total_potholes": total_potholes,
-        "data_available": any(x is not None for x in [corr, regional, annual_counts]),
+        "corr":            corr,
+        "regional":        regional,
+        "lag_stats":       lag_stats,
+        "lag_full":        lag_full,
+        "alert_prec":      alert_prec,
+        "seas_check":      seas_check,
+        "annual_counts":   annual_counts,
+        "monthly_counts":  monthly_counts,
+        "monthly_ftc":     monthly_ftc,
+        "total_records":   total_records,
+        "total_potholes":  total_potholes,
+        "data_available":  any(x is not None for x in [corr, regional, annual_counts]),
     }
 
 _live = _load_outputs()
@@ -928,19 +969,16 @@ elif S == 5:
     years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
     months_short = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
+    # ── Annual totals — live CSV first, hardcoded fallback ────────────────────
     ann = {2019:4784, 2020:4009, 2021:4118, 2022:5700, 2023:3299, 2024:4604, 2025:5582}
+    if _live.get("annual_counts"):
+        ann.update(_live["annual_counts"])
 
-    ftc_monthly = {
-        2019: [18,14,22,11,1,0,0,0,0,2,10,16],
-        2020: [14,16,20, 9,2,0,0,0,1,1, 8,18],
-        2021: [16,13,21,10,1,0,0,0,0,2, 9,17],
-        2022: [22,20,31,14,2,0,0,0,1,3,12,20],
-        2023: [12,10,16, 7,1,0,0,0,0,1, 6,12],
-        2024: [17,15,24,12,2,0,0,0,1,2,10,15],
-        2025: [20,18,28,13,2,0,0,0,1,0, 0, 0],
-    }
-
-    data_ym = {
+    # ── Monthly complaint counts ───────────────────────────────────────────────
+    # HARDCODED FALLBACK — used when merged CSV is not present.
+    # These were manually extracted from the analysis outputs.
+    # When the merged CSV is available, live values override these.
+    _data_ym_fallback = {
         2019: [347,438,384,418,488,494,576,407,345,328,250,309],
         2020: [290,367,322,350,409,414,483,341,289,275,210,259],
         2021: [298,377,331,360,420,425,497,350,297,282,215,266],
@@ -949,6 +987,45 @@ elif S == 5:
         2024: [334,422,370,402,470,475,555,391,332,315,241,297],
         2025: [496,628,551,598,700,708,825,582,494,  0,  0,  0],
     }
+    _live_monthly = _live.get("monthly_counts")
+    if _live_monthly:
+        data_ym = {yr: _live_monthly.get(yr, _data_ym_fallback.get(yr, [0]*12))
+                   for yr in years}
+        _complaints_source = "live"
+    else:
+        data_ym = _data_ym_fallback
+        _complaints_source = "hardcoded"
+
+    # ── Monthly FTC day counts ─────────────────────────────────────────────────
+    # HARDCODED FALLBACK — average freeze-thaw days per month across 5 ECCC stations.
+    # These are approximate monthly summaries, not the daily FTC_14d rolling values.
+    # The alert simulation uses these to APPROXIMATE what the 14-day rolling window
+    # would have looked like — it is a simulation, not a replay of the actual daily signal.
+    # For the real daily FTC_14d series, see outputs/correlation_table.csv.
+    _ftc_monthly_fallback = {
+        2019: [18,14,22,11,1,0,0,0,0,2,10,16],
+        2020: [14,16,20, 9,2,0,0,0,1,1, 8,18],
+        2021: [16,13,21,10,1,0,0,0,0,2, 9,17],
+        2022: [22,20,31,14,2,0,0,0,1,3,12,20],
+        2023: [12,10,16, 7,1,0,0,0,0,1, 6,12],
+        2024: [17,15,24,12,2,0,0,0,1,2,10,15],
+        2025: [20,18,28,13,2,0,0,0,1,0, 0, 0],
+    }
+    _live_ftc = _live.get("monthly_ftc")
+    if _live_ftc:
+        ftc_monthly = {yr: _live_ftc.get(yr, _ftc_monthly_fallback.get(yr, [0]*12))
+                       for yr in years}
+        _ftc_source = "live"
+    else:
+        ftc_monthly = _ftc_monthly_fallback
+        _ftc_source = "hardcoded"
+
+    # Data source indicator — shown on the alert tab so stakeholders know what they're looking at
+    _data_note = (
+        "✅ Live data loaded from merged CSV."
+        if _complaints_source == "live"
+        else "ℹ️ Using representative hardcoded values — place merged CSV at Data/NS_Project_Merged_FIXED.csv to load live data."
+    )
 
     # ── Stakeholder KPI summary row ───────────────────────────────────────────
     _kpi1, _kpi2, _kpi3, _kpi4 = st.columns(4, gap="medium")
@@ -1159,6 +1236,11 @@ elif S == 5:
             'Hover any bar for full detail. '
             'Shaded zones show the alert window (Jan–Mar) and proactive deployment window (Apr–May).</p>',
             unsafe_allow_html=True)
+        st.caption(
+            f"📊 Complaint data: {'loaded from merged CSV' if _complaints_source == 'live' else 'representative hardcoded values (run 02_analysis.py and place merged CSV to load live)'}  ·  "
+            f"FTC data: {'loaded from merged CSV' if _ftc_source == 'live' else 'hardcoded monthly summaries'}  ·  "
+            "Alert levels are SIMULATED from monthly FTC totals — not a replay of the actual daily FTC_14d signal."
+        )
 
         sel_yr_alert = st.selectbox(
             "Year to simulate (2022 = worst season, 2023 = mildest)",
@@ -1233,9 +1315,9 @@ elif S == 5:
             hovertemplate=(
                 "<b>%{x}</b><br>"
                 "Pothole complaints that month: <b>%{y:,}</b><br>"
-                "Alert level: <b>%{customdata[0]}</b><br>"
+                "Alert level (simulated): <b>%{customdata[0]}</b><br>"
                 "Freeze-thaw days (whole month): <b>%{customdata[1]}</b><br>"
-                "Est. 14-day rolling FTC: <b>%{customdata[2]}</b>"
+                "Est. 14-day rolling FTC (approximation): <b>%{customdata[2]}</b>"
                 "<extra></extra>"),
             showlegend=False,
         ))
