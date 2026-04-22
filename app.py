@@ -389,6 +389,20 @@ with st.sidebar:
     }}
     </style>""", unsafe_allow_html=True)
 
+    # White Paper download
+    st.markdown('<div style="padding:10px 16px 0">', unsafe_allow_html=True)
+    paper_path = os.path.join(os.path.dirname(__file__), "paper", "White_paper_5510.pdf")
+    if os.path.exists(paper_path):
+        with open(paper_path, "rb") as f:
+            st.download_button(
+                label="Download White Paper",
+                data=f,
+                file_name="White_paper_5510.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+    st.markdown('</div>', unsafe_allow_html=True)
+
     # Footer
     st.markdown(
         f'<div style="padding:14px 22px 18px;border-top:1px solid var(--sb-line)">'
